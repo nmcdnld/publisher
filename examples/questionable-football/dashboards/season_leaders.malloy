@@ -1,0 +1,102 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// The fantasy season as a no-code dashboard: who scored, where the points came
+// from, and how fast each position falls off. public/leaders.html draws the
+// same season with weekly sparklines and a player drill.
+##! experimental.givens
+
+##" Half-PPR fantasy points, weeks 1-17, scored from the play-by-play: a
+##" point per 25 passing yards, 4 per passing touchdown, -2 per interception,
+##" a point per 10 rushing or receiving yards, half a point per reception and
+##" 6 per rushing or receiving touchdown.
+##"
+##" **Scarcity** is the average season total of the players finishing in each
+##" band at their position: the steeper the drop, the more an early pick there
+##" is worth.
+## artifact { title="Season leaders" tiles=["leaders -> board", "leaders -> scarcity", "leaders -> mix", "leaders -> best_games", "leader_events -> by_quarter"] } dashboard { columns=12 }
+import { player_seasons, fantasy_events } from "../fantasy.malloy"
+import { teams } from "../football.malloy"
+
+# description="One season, or a range: 2023, 2024 or 2025"
+# label="Season" range_min=2023 range_max=2025
+given: SEASON :: filter<number> is f'2025'
+
+# description="QB, RB, WR, TE or K. Leave empty for all"
+# label="Position" control=multiselect suggest { source=player_seasons dimension=position }
+given: POSITION :: filter<string> is f''
+
+# description="The team a player scored most for. Leave empty for all"
+# label="Team" control=select suggest { source=teams dimension=team }
+given: TEAM :: filter<string> is f''
+
+#(doc) The season-leaders dashboard's tiles, each over the seasons, positions and teams its controls select
+source: leaders is player_seasons extend {
+  # colspan=8
+  # label="Leaderboard"
+  view: board is leaderboard + { where: season ~ $SEASON, where: position ~ $POSITION, where: team ~ $TEAM, limit: 40 }
+
+  # colspan=4
+  # label="Positional scarcity"
+  # bar_chart
+  view: scarcity is positional_scarcity + { where: season ~ $SEASON, where: position ~ $POSITION }
+
+  # colspan=6
+  # break
+  # label="Where the points come from"
+  view: mix is {
+    group_by:
+      # label="Pos"
+      position
+    aggregate:
+      # number="#,##0"
+      # label="Pass"
+      pass_pts is passing_points.sum()
+      # number="#,##0"
+      # label="Rush"
+      rush_pts is rushing_points.sum()
+      # number="#,##0"
+      # label="Recv"
+      recv_pts is receiving_points.sum()
+      # number="#,##0"
+      # label="Kick"
+      kick_pts is kicking_points.sum()
+    where: season ~ $SEASON, position ~ $POSITION, team ~ $TEAM
+    order_by: position
+  }
+
+  # colspan=6
+  # label="Best single games"
+  view: best_games is {
+    top: 15
+    group_by:
+      # number=id
+      # label="Season"
+      season
+      # label="Player"
+      full_name
+      # label="Pos"
+      position
+      # label="Team"
+      team
+      # number="0.0"
+      # label="Best game"
+      best_game
+    where: season ~ $SEASON, position ~ $POSITION, team ~ $TEAM
+    order_by: best_game desc
+  }
+}
+
+#(doc) The season-leaders dashboard's play-level tiles, over the same controls
+source: leader_events is fantasy_events extend {
+  # colspan=12
+  # break
+  # label="Points by quarter"
+  # bar_chart
+  view: by_quarter is {
+    group_by: quarter_label
+    aggregate: fantasy_points
+    where: season ~ $SEASON, position ~ $POSITION, team ~ $TEAM
+    order_by: quarter_label
+  }
+}

@@ -1,0 +1,22 @@
+signal_id,signal,family,style,bias,bias_sign,definition
+rsi_oversold,RSI oversold,Price,Mean reversion,Bullish,1,RSI 14 closes at or below 30 after closing above it
+rsi_overbought,RSI overbought,Price,Mean reversion,Bearish,-1,RSI 14 closes at or above 70 after closing below it
+breakout_20d,20-day breakout,Price,Momentum,Bullish,1,Close above the highest high of the prior 20 sessions
+breakdown_20d,20-day breakdown,Price,Momentum,Bearish,-1,Close below the lowest low of the prior 20 sessions
+reclaim_sma50,Reclaims 50-day,Price,Trend,Bullish,1,Close crosses above the 50-day simple moving average
+lose_sma50,Loses 50-day,Price,Trend,Bearish,-1,Close crosses below the 50-day simple moving average
+golden_cross,Golden cross,Price,Trend,Bullish,1,50-day SMA crosses above the 200-day SMA
+death_cross,Death cross,Price,Trend,Bearish,-1,50-day SMA crosses below the 200-day SMA
+gap_up,Gap up 3%+,Price,Momentum,Bullish,1,Opens at least 3% above the prior close
+gap_down,Gap down 3%+,Price,Momentum,Bearish,-1,Opens at least 3% below the prior close
+volume_thrust_up,Volume thrust up,Volume,Momentum,Bullish,1,Volume 2+ standard deviations above its 20-day mean on an up close
+volume_thrust_down,Volume thrust down,Volume,Momentum,Bearish,-1,Volume 2+ standard deviations above its 20-day mean on a down close
+put_call_spike,Put/call spike,Options flow,Contrarian,Bullish,1,Put/call volume ratio 2+ standard deviations above its 20-day mean
+bullish_premium_surge,Bullish premium surge,Options flow,Momentum,Bullish,1,Net call-minus-put premium 2+ standard deviations above its 20-day mean
+bearish_premium_surge,Bearish premium surge,Options flow,Momentum,Bearish,-1,Net call-minus-put premium 2+ standard deviations below its 20-day mean
+gamma_turns_negative,Gamma turns negative,Positioning,Volatility regime,Bearish,-1,Net dealer gamma exposure (calls plus puts) flips from positive to negative
+gamma_turns_positive,Gamma turns positive,Positioning,Volatility regime,Bullish,1,Net dealer gamma exposure flips from negative to positive
+iv_spike,IV spike,Volatility,Contrarian,Bearish,-1,30-day implied volatility up 5+ points over 5 sessions
+iv_crush,IV crush,Volatility,Contrarian,Bullish,1,30-day implied volatility down 5+ points over 5 sessions
+earnings_beat,Earnings beat,Earnings,Drift,Bullish,1,First session that trades on a report whose EPS beat the estimate
+earnings_miss,Earnings miss,Earnings,Drift,Bearish,-1,First session that trades on a report whose EPS missed the estimate

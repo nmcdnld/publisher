@@ -1,0 +1,64 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// The 2026 draft market as a no-code dashboard, and last year's market graded
+// against what happened. public/index.html is the same board as a live
+// cheatsheet you cross names off.
+##! experimental.givens
+
+##" **ADP** is average draft position in 12-team half-PPR drafts; the pick
+##" ("4.07") is the round and slot it implies. **Value vs ADP** is a player's
+##" position rank by ADP minus his rank by projection: positive is a steal,
+##" negative is the market paying for more than the projection sees. **VOR** is
+##" projected points above the last starter at the position (QB12, RB30, WR36,
+##" TE12).
+##"
+##" **2025 hit rate** grades last year's market: a pick hit when the player
+##" finished at or above the position rank he was drafted at.
+## artifact { title="Draft market" tiles=["market -> steals", "market -> reaches", "market -> curve", "market -> capital", "graded -> hit_rates", "graded -> hits", "graded -> misses"] } dashboard { columns=12 }
+import { draft_board, adp_2025 } from "../fantasy.malloy"
+
+# description="QB, RB, WR or TE. Leave empty for all"
+# label="Position" control=multiselect suggest { source=draft_board dimension=position }
+given: POSITION :: filter<string> is f''
+
+# description="The ADP range: 1 is the first pick, 192 the last of 16 rounds"
+# label="ADP" range_min=1 range_max=192
+given: ADP :: filter<number> is f'[1 to 160]'
+
+#(doc) The draft-market dashboard's 2026 tiles, over the positions and ADP range its controls select
+source: market is draft_board extend {
+  # colspan=6
+  # label="Market steals"
+  view: steals is market_steals + { where: position ~ $POSITION, where: adp ~ $ADP }
+
+  # colspan=6
+  # label="Overpriced"
+  view: reaches is overpriced + { where: position ~ $POSITION, where: adp ~ $ADP }
+
+  # colspan=8
+  # break
+  # label="Projection against price"
+  view: curve is price_curve + { where: position ~ $POSITION, where: adp ~ $ADP }
+
+  # colspan=4
+  # label="Draft capital by position"
+  view: capital is by_position + { where: position ~ $POSITION, where: adp ~ $ADP }
+}
+
+#(doc) The draft-market dashboard's 2025 tiles: last year's prices against last year's finishes
+source: graded is adp_2025 extend {
+  # colspan=12
+  # break
+  # label="2025 hit rate by position and round"
+  view: hit_rates is hit_rate_by_round + { where: position ~ $POSITION, where: adp ~ $ADP }
+
+  # colspan=6
+  # break
+  # label="2025's biggest hits"
+  view: hits is biggest_hits + { where: position ~ $POSITION, where: adp ~ $ADP }
+
+  # colspan=6
+  # label="2025's costliest misses"
+  view: misses is biggest_misses + { where: position ~ $POSITION, where: adp ~ $ADP }
+}

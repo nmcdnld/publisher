@@ -1,0 +1,57 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// The 2026 season as the betting market sees it, beside what each team did in
+// 2025. public/teams.html draws the same board with a week-by-week
+// win-probability grid and a team drill.
+##! experimental.givens
+
+##" **Win total** and the playoff, division and Super Bowl odds are DraftKings
+##" futures with the vig removed. **Line-implied wins** is the average win
+##" probability over the games that already have a posted line, extended to 17
+##" games: lines are posted a few weeks ahead, so it reads the early schedule,
+##" and the season market reads all of it.
+##"
+##" **Opp win total** is the average 2026 win total of a team's opponents: the
+##" market's own schedule strength.
+## artifact { title="2026 team outlook" tiles=["outlook -> board", "outlook -> favorites", "outlook -> schedules", "posted -> lines"] } dashboard { columns=12 }
+import { team_outlook, schedule_2026 } from "../market.malloy"
+import { teams } from "../football.malloy"
+
+# description="AFC or NFC. Leave empty for both"
+# label="Conference" control=select suggest { source=teams dimension=conference }
+given: CONFERENCE :: filter<string> is f''
+
+# description="East, North, South or West. Leave empty for all"
+# label="Division" control=select suggest { source=teams dimension=division }
+given: DIVISION :: filter<string> is f''
+
+#(doc) The team-outlook dashboard's tiles, over the conference and division its controls select
+source: outlook is team_outlook extend {
+  # colspan=12
+  # label="League board"
+  view: board is league_board + { where: teams.conference ~ $CONFERENCE, where: teams.division ~ $DIVISION }
+
+  # colspan=6
+  # break
+  # label="Super Bowl favorites"
+  view: favorites is title_odds + { where: teams.conference ~ $CONFERENCE, where: teams.division ~ $DIVISION }
+
+  # colspan=6
+  # label="Schedule strength"
+  # bar_chart
+  view: schedules is {
+    group_by: team
+    aggregate: schedule_strength
+    where: teams.conference ~ $CONFERENCE, teams.division ~ $DIVISION
+    order_by: schedule_strength desc
+  }
+}
+
+#(doc) The team-outlook dashboard's game-level tile
+source: posted is schedule_2026 extend {
+  # colspan=12
+  # break
+  # label="Posted lines"
+  view: lines is posted_lines + { where: home.conference ~ $CONFERENCE or away.conference ~ $CONFERENCE, where: home.division ~ $DIVISION or away.division ~ $DIVISION }
+}

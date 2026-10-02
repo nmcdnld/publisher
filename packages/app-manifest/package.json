@@ -1,0 +1,30 @@
+{
+   "name": "@malloy-publisher/app-manifest",
+   "description": "The manifest-backed data app: a saved finding as public/apps/<slug>/app.json in a package, read by the Console and the destination",
+   "version": "0.0.1",
+   "private": true,
+   "license": "MIT",
+   "type": "module",
+   "main": "./src/index.ts",
+   "types": "./src/index.ts",
+   "exports": {
+      ".": "./src/index.ts",
+      "./analyst/*": "./src/analyst/*.ts",
+      "./runtime/load": "./src/runtime/load.ts",
+      "./runtime/peek": "./src/runtime/peek.ts"
+   },
+   "scripts": {
+      "test": "bun test ./src",
+      "typecheck": "bunx tsc --noEmit",
+      "format": "bunx prettier --write 'src/**/*.ts' 'scripts/**/*.ts'"
+   },
+   "dependencies": {
+      "@tanstack/charts": "^0.18.0",
+      "chart.js": "^4.5.1",
+      "zod": "^4.6.5"
+   },
+   "devDependencies": {
+      "@types/bun": "^1.2.21",
+      "typescript": "^5.8.3"
+   }
+}

@@ -141,6 +141,8 @@ export function internalErrorToHttpError(error: Error) {
       return httpError(404, error.message);
    } else if (error instanceof DashboardNotFoundError) {
       return httpError(404, error.message);
+   } else if (error instanceof DataAppNotFoundError) {
+      return httpError(404, error.message);
    } else if (error instanceof NotQueryableError) {
       return httpError(404, error.message);
    } else if (error instanceof QueryCompileError) {
@@ -306,6 +308,13 @@ export class ModelNotFoundError extends Error {
  * dashboard.
  */
 export class DashboardNotFoundError extends Error {
+   constructor(message: string) {
+      super(message);
+   }
+}
+
+/** No manifest-backed data app at `public/apps/<slug>/` in the package. */
+export class DataAppNotFoundError extends Error {
    constructor(message: string) {
       super(message);
    }

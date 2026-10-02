@@ -1,0 +1,286 @@
+{
+  "version": 1,
+  "title": "In a risk-on tape, breakdowns got bought and big gaps faded",
+  "description": "With SPY above its 200-day, a close below the prior 20-session low on the 27 stocks was followed by a five-session return +2.29 points above base (t 2.9, 206 firings). Gaps of 3% or more reverted both ways: +1.42 after a gap down, −1.13 after a gap up.",
+  "createdAt": "2026-09-30T20:00:00Z",
+  "updatedAt": "2026-09-30T20:00:00Z",
+  "topics": [
+    "signals",
+    "market regime",
+    "event study"
+  ],
+  "queries": {
+    "q1": {
+      "model": "lab_app.malloy",
+      "source": "lab_events",
+      "malloy": "run: lab_events -> scorecard",
+      "view": "scorecard",
+      "givens": {
+        "UNIVERSE": "Equity",
+        "REGIME": "Risk-on"
+      },
+      "title": "Signal scorecard: stocks, SPY above its 200-day",
+      "grain": "one row per signal"
+    }
+  },
+  "snapshot": {
+    "asOf": "2026-09-30T20:00:00Z",
+    "columns": {
+      "q1": [
+        {
+          "name": "signal",
+          "type": "string",
+          "label": "Signal"
+        },
+        {
+          "name": "bias",
+          "type": "string",
+          "label": "Bias"
+        },
+        {
+          "name": "verdict_5d",
+          "type": "string",
+          "label": "Verdict"
+        },
+        {
+          "name": "event_count",
+          "type": "number",
+          "label": "Firings"
+        },
+        {
+          "name": "edge_5d",
+          "type": "number",
+          "unit": "percent",
+          "label": "Edge vs base 5d"
+        },
+        {
+          "name": "bias_edge_5d",
+          "type": "number",
+          "unit": "percent",
+          "label": "Bias-signed edge 5d"
+        },
+        {
+          "name": "edge_t_5d",
+          "type": "number",
+          "label": "t 5d"
+        }
+      ]
+    },
+    "rows": {
+      "q1": [
+        {
+          "signal": "Death cross",
+          "bias": "Bearish",
+          "verdict_5d": "Thin",
+          "event_count": 12,
+          "edge_5d": 0.0762,
+          "bias_edge_5d": -0.0762,
+          "edge_t_5d": 2.55
+        },
+        {
+          "signal": "20-day breakdown",
+          "bias": "Bearish",
+          "verdict_5d": "Inverts",
+          "event_count": 206,
+          "edge_5d": 0.0229,
+          "bias_edge_5d": -0.0229,
+          "edge_t_5d": 2.9
+        },
+        {
+          "signal": "Volume thrust down",
+          "bias": "Bearish",
+          "verdict_5d": "Noise",
+          "event_count": 238,
+          "edge_5d": 0.0152,
+          "bias_edge_5d": -0.0152,
+          "edge_t_5d": 1.96
+        },
+        {
+          "signal": "Gap down 3%+",
+          "bias": "Bearish",
+          "verdict_5d": "Inverts",
+          "event_count": 465,
+          "edge_5d": 0.0142,
+          "bias_edge_5d": -0.0142,
+          "edge_t_5d": 2.3
+        },
+        {
+          "signal": "RSI oversold",
+          "bias": "Bullish",
+          "verdict_5d": "Noise",
+          "event_count": 183,
+          "edge_5d": 0.0115,
+          "bias_edge_5d": 0.0115,
+          "edge_t_5d": 1.63
+        },
+        {
+          "signal": "IV crush",
+          "bias": "Bullish",
+          "verdict_5d": "Noise",
+          "event_count": 443,
+          "edge_5d": 0.0095,
+          "bias_edge_5d": 0.0095,
+          "edge_t_5d": 1.64
+        },
+        {
+          "signal": "Put/call spike",
+          "bias": "Bullish",
+          "verdict_5d": "Noise",
+          "event_count": 407,
+          "edge_5d": 0.0076,
+          "bias_edge_5d": 0.0076,
+          "edge_t_5d": 1.47
+        },
+        {
+          "signal": "Gamma turns negative",
+          "bias": "Bearish",
+          "verdict_5d": "Noise",
+          "event_count": 322,
+          "edge_5d": 0.006,
+          "bias_edge_5d": -0.006,
+          "edge_t_5d": 1.06
+        },
+        {
+          "signal": "Bullish premium surge",
+          "bias": "Bullish",
+          "verdict_5d": "Noise",
+          "event_count": 356,
+          "edge_5d": 0.0053,
+          "bias_edge_5d": 0.0053,
+          "edge_t_5d": 0.86
+        },
+        {
+          "signal": "Volume thrust up",
+          "bias": "Bullish",
+          "verdict_5d": "Noise",
+          "event_count": 313,
+          "edge_5d": 0.0024,
+          "bias_edge_5d": 0.0024,
+          "edge_t_5d": 0.34
+        },
+        {
+          "signal": "Earnings beat",
+          "bias": "Bullish",
+          "verdict_5d": "Noise",
+          "event_count": 45,
+          "edge_5d": 0.002,
+          "bias_edge_5d": 0.002,
+          "edge_t_5d": 0.12
+        },
+        {
+          "signal": "Reclaims 50-day",
+          "bias": "Bullish",
+          "verdict_5d": "Noise",
+          "event_count": 240,
+          "edge_5d": 0.0006,
+          "bias_edge_5d": 0.0006,
+          "edge_t_5d": 0.09
+        },
+        {
+          "signal": "RSI overbought",
+          "bias": "Bearish",
+          "verdict_5d": "Noise",
+          "event_count": 289,
+          "edge_5d": 0.0003,
+          "bias_edge_5d": -0.0003,
+          "edge_t_5d": 0.05
+        },
+        {
+          "signal": "Bearish premium surge",
+          "bias": "Bearish",
+          "verdict_5d": "Noise",
+          "event_count": 242,
+          "edge_5d": 0.0002,
+          "bias_edge_5d": -0.0002,
+          "edge_t_5d": 0.03
+        },
+        {
+          "signal": "IV spike",
+          "bias": "Bearish",
+          "verdict_5d": "Noise",
+          "event_count": 413,
+          "edge_5d": -0.0011,
+          "bias_edge_5d": 0.0011,
+          "edge_t_5d": -0.17
+        },
+        {
+          "signal": "Gamma turns positive",
+          "bias": "Bullish",
+          "verdict_5d": "Noise",
+          "event_count": 321,
+          "edge_5d": -0.0019,
+          "bias_edge_5d": -0.0019,
+          "edge_t_5d": -0.32
+        },
+        {
+          "signal": "Loses 50-day",
+          "bias": "Bearish",
+          "verdict_5d": "Noise",
+          "event_count": 238,
+          "edge_5d": -0.0025,
+          "bias_edge_5d": 0.0025,
+          "edge_t_5d": -0.4
+        },
+        {
+          "signal": "20-day breakout",
+          "bias": "Bullish",
+          "verdict_5d": "Noise",
+          "event_count": 433,
+          "edge_5d": -0.0048,
+          "bias_edge_5d": -0.0048,
+          "edge_t_5d": -0.95
+        },
+        {
+          "signal": "Earnings miss",
+          "bias": "Bearish",
+          "verdict_5d": "Noise",
+          "event_count": 69,
+          "edge_5d": -0.006,
+          "bias_edge_5d": 0.006,
+          "edge_t_5d": -0.51
+        },
+        {
+          "signal": "Gap up 3%+",
+          "bias": "Bullish",
+          "verdict_5d": "Inverts",
+          "event_count": 656,
+          "edge_5d": -0.0113,
+          "bias_edge_5d": -0.0113,
+          "edge_t_5d": -2.31
+        },
+        {
+          "signal": "Golden cross",
+          "bias": "Bullish",
+          "verdict_5d": "Thin",
+          "event_count": 18,
+          "edge_5d": -0.0192,
+          "bias_edge_5d": -0.0192,
+          "edge_t_5d": -1.14
+        }
+      ]
+    }
+  },
+  "kind": "analysis",
+  "analysis": {
+    "details": [
+      "Risk-on here means SPY closed above its own 200-day average on the session the signal fired. That is known from Jul 18, 2025, once SPY has 200 sessions of history, and was true on 290 of the 303 sessions since. The population is the 27 stocks; the six benchmark funds are left out.",
+      "A 20-day breakdown is a bearish momentum signal, and it inverted: 60% of firings were up five sessions later against 54% normally, on 27 different stocks. By 20 sessions the edge is +1.19 points at t 0.8, so it reads as a bounce, not a reversal.",
+      "Big opens faded in both directions. A 3%+ gap down was followed by +1.42 points over base (t 2.3) but gave it back and more by 20 sessions (−2.92, t -2.4); a 3%+ gap up by −1.13 (t -2.3). Short-horizon mean reversion fits all three better than any one signal's story.",
+      "Three of 21 signals clearing |t| ≥ 2 is more than chance alone would produce, but overlapping five-day windows make each t-statistic generous. SPY spent only 13 sessions below its 200-day, too few to say whether a risk-off tape behaves the opposite way."
+    ],
+    "evidence": {
+      "query": "q1",
+      "kind": "bar",
+      "xKey": "signal",
+      "series": [
+        {
+          "key": "edge_5d",
+          "label": "Edge vs base, 5 sessions"
+        }
+      ],
+      "format": "percent",
+      "caption": "Average five-session return after each signal minus the same stocks' base five-session return, 27 stocks, SPY above its 200-day. Unsigned: positive means prices rose more than usual, whatever the signal's bias",
+      "highlight": "20-day breakdown"
+    }
+  }
+}

@@ -15,6 +15,15 @@
 //   - Publisher.embed(selector, { src, height?, token? })
 //   - Publisher.context  ({ environment, package } inferred from URL)
 //   - Publisher.setToken(token)  (override Bearer token; default uses cookies)
+//   - Publisher.theme    ({ mode, tokens, source }: the appearance in effect)
+//
+// Theme: the runtime sets data-theme="light"|"dark" and color-scheme on
+// <html>, following the OS setting standalone. Inside a host that sends a
+// "publisher:theme" message, it follows the host instead: it also sets
+// data-theme-source="host" and one --publisher-<token> custom property per
+// token sent (background, foreground, card, primary, chart-1, ...). Pages
+// style off those in CSS, and redraw anything painted from script (canvas
+// charts) on the "publisher:theme" window event.
 //
 // When loaded inside an iframe served from /environments/<env>/packages/<pkg>/...,
 // the runtime auto-subscribes to a Server-Sent Events live-reload stream
@@ -22,11 +31,11 @@
 // updates to the parent window so Publisher.embed() in the host can resize
 // the iframe.
 //
-// The "publisher:resize" postMessage protocol below is the SAME contract the
-// SPA host consumes. Its canonical definition lives in
-// packages/sdk/src/utils/dataAppEmbed.ts (PUBLISHER_RESIZE_MESSAGE_TYPE /
-// PublisherResizeMessage). This file is build-step-free vanilla JS and can't
-// import it, so keep the message type/shape here in sync with that module.
+// The "publisher:resize", "publisher:theme" and "publisher:theme-request"
+// postMessage protocols below are the SAME contract the SPA host speaks. Their
+// canonical definition lives in packages/sdk/src/utils/dataAppEmbed.ts. This
+// file is build-step-free vanilla JS and can't import it, so keep the message
+// types/shapes here in sync with that module.
 
 (function () {
    "use strict";
@@ -329,6 +338,133 @@
       }
    }
 
+   // --- Theme ------------------------------------------------------------
+   var inFrame = (function () {
+      try {
+         return window.self !== window.top;
+      } catch (_e) {
+         return true;
+      }
+   })();
+   // The last host theme, so a page navigated to inside the same frame paints
+   // in it at once instead of flashing the OS mode until the host answers.
+   var THEME_CACHE_KEY = "publisher:host-theme";
+   var TOKEN_NAME = /^[a-z0-9-]+$/;
+   var darkQuery = window.matchMedia
+      ? window.matchMedia("(prefers-color-scheme: dark)")
+      : null;
+   var theme = null;
+   var themeTokensSet = [];
+
+   function systemTheme() {
+      return {
+         mode: darkQuery && darkQuery.matches ? "dark" : "light",
+         tokens: {},
+         source: "system",
+      };
+   }
+
+   function readHostTheme(data) {
+      if (!data || (data.mode !== "light" && data.mode !== "dark")) return null;
+      var tokens = {};
+      var given = data.tokens || {};
+      for (var name in given) {
+         var value = given[name];
+         if (!Object.prototype.hasOwnProperty.call(given, name)) continue;
+         if (!TOKEN_NAME.test(name) || typeof value !== "string") continue;
+         // Colors and fonts only: a url() would fetch from wherever it names.
+         if (/url\(/i.test(value)) continue;
+         tokens[name] = value;
+      }
+      return { mode: data.mode, tokens: tokens, source: "host" };
+   }
+
+   function publicTheme() {
+      return {
+         mode: theme.mode,
+         tokens: Object.assign({}, theme.tokens),
+         source: theme.source,
+      };
+   }
+
+   function applyTheme(next) {
+      if (
+         theme &&
+         theme.mode === next.mode &&
+         theme.source === next.source &&
+         JSON.stringify(theme.tokens) === JSON.stringify(next.tokens)
+      ) {
+         return;
+      }
+      var first = theme === null;
+      var root = document.documentElement;
+      for (var i = 0; i < themeTokensSet.length; i++) {
+         root.style.removeProperty("--publisher-" + themeTokensSet[i]);
+      }
+      themeTokensSet = Object.keys(next.tokens);
+      for (var j = 0; j < themeTokensSet.length; j++) {
+         var key = themeTokensSet[j];
+         root.style.setProperty("--publisher-" + key, next.tokens[key]);
+      }
+      root.setAttribute("data-theme", next.mode);
+      root.style.colorScheme = next.mode;
+      if (next.source === "host") {
+         root.setAttribute("data-theme-source", "host");
+      } else {
+         root.removeAttribute("data-theme-source");
+      }
+      theme = next;
+      if (!first && typeof CustomEvent === "function") {
+         window.dispatchEvent(
+            new CustomEvent("publisher:theme", { detail: publicTheme() }),
+         );
+      }
+   }
+
+   function setUpTheme() {
+      var cached = null;
+      if (inFrame) {
+         try {
+            cached = readHostTheme(
+               JSON.parse(sessionStorage.getItem(THEME_CACHE_KEY) || "null"),
+            );
+         } catch (_e) {
+            cached = null;
+         }
+      }
+      applyTheme(cached || systemTheme());
+
+      if (darkQuery) {
+         var onSystemChange = function () {
+            if (theme.source === "system") applyTheme(systemTheme());
+         };
+         if (darkQuery.addEventListener) {
+            darkQuery.addEventListener("change", onSystemChange);
+         } else if (darkQuery.addListener) {
+            darkQuery.addListener(onSystemChange);
+         }
+      }
+
+      if (!inFrame) return;
+      window.addEventListener("message", function (e) {
+         if (e.source !== window.parent) return;
+         if (!e.data || e.data.type !== "publisher:theme") return;
+         var next = readHostTheme(e.data);
+         if (!next) return;
+         try {
+            sessionStorage.setItem(THEME_CACHE_KEY, JSON.stringify(next));
+         } catch (_e) {
+            /* storage may be blocked; the cache is only an optimization */
+         }
+         applyTheme(next);
+      });
+      try {
+         window.parent.postMessage({ type: "publisher:theme-request" }, "*");
+      } catch (_e) {
+         /* ignore */
+      }
+   }
+
    // --- SSE live reload --------------------------------------------------
    function setUpLiveReload() {
       if (!ctx.environment || !ctx.package) return;
@@ -369,9 +505,14 @@
          bearerToken = token || null;
       },
    };
+   Object.defineProperty(window.Publisher, "theme", {
+      enumerable: true,
+      get: publicTheme,
+   });
 
-   // Auto-init the in-iframe behaviors and live-reload subscription.
-   // Both are no-ops if not applicable.
+   // Auto-init the theme, the in-iframe behaviors and the live-reload
+   // subscription. Each is a no-op where it does not apply.
+   setUpTheme();
    setUpEmbeddedSelfBehaviors();
    setUpLiveReload();
 })();

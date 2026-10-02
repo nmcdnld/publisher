@@ -1,0 +1,54 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// The sources public/lab.html queries: the signal event study, scoped.
+//
+// Two scopes, and the split is the point of the page. `lab_events` is every
+// signal under the population controls (asset class, symbol, market regime,
+// date), and feeds the scorecard. `lab_signal` is the same population narrowed
+// to the ONE signal the reader drilled into, and feeds the drill panel. Both
+// bind the population givens identically, so a number in the drill panel is
+// always a slice of the scorecard row it was opened from.
+//
+// Each population given is a plain string with an `All` sentinel rather than a
+// `filter<string>`. The page offers one value or all of them, never a filter
+// expression, so a string compared with `=` is the whole contract, and the
+// page needs no filter-syntax encoder to stay safe.
+##! experimental.givens
+import "signals.malloy"
+
+# description="The signal the drill panel is about"
+# label="Signal" control=select suggest { query=signal_suggest dimension=signal_id }
+given: SIGNAL :: string is 'put_call_spike'
+
+# description="Equity for the 27 stocks, ETF for the 6 benchmark funds, or All"
+# label="Universe"
+given: UNIVERSE :: string is 'All'
+
+# description="One symbol, or All"
+# label="Symbol" control=select suggest { query=symbol_suggest dimension=symbol }
+given: SYMBOL :: string is 'All'
+
+# description="Only events that fired with SPY above (Risk-on) or below (Risk-off) its 200-day SMA, or All. The regime is unknown until SPY has 200 sessions of history (before 2025-07-18), so those events count under All only"
+# label="Market regime"
+given: REGIME :: string is 'All'
+
+# description="Only count signals that fired on or after this session"
+# label="Events since"
+given: SINCE :: date is @2024-09-30
+
+#(doc) Signal events under the lab's population controls. The scorecard reads this
+source: lab_events is signal_events extend {
+  where:
+    ($UNIVERSE = 'All' or asset_class = $UNIVERSE)
+    and ($SYMBOL = 'All' or symbol = $SYMBOL)
+    and ($REGIME = 'All'
+      or ($REGIME = 'Risk-on' and spy_above_sma_200)
+      or ($REGIME = 'Risk-off' and spy_above_sma_200 is not null and not spy_above_sma_200))
+    and session_date >= $SINCE
+}
+
+#(doc) The lab's population narrowed to the one signal being drilled into
+source: lab_signal is lab_events extend {
+  where: signal_id = $SIGNAL
+}

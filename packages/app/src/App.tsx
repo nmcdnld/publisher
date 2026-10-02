@@ -19,6 +19,7 @@ import {
    RouterProvider,
 } from "react-router-dom";
 import { HeaderProps } from "./components/layout/Header/Header";
+import { ConsolePublishProvider } from "./components/publish/ConsolePublishProvider";
 import { logConsoleEvent } from "./utils/consoleTelemetry";
 import { PublisherMuiThemeProvider } from "./theme/PublisherMuiThemeProvider";
 
@@ -70,9 +71,11 @@ export const createMalloyRouter = (
             <ServerProvider>
                <DocumentStorageProvider documentStorage={documentStorage}>
                   <PublisherMuiThemeProvider>
-                     <Suspense fallback={<Loading />}>
-                        <MainPage headerProps={headerProps} />
-                     </Suspense>
+                     <ConsolePublishProvider>
+                        <Suspense fallback={<Loading />}>
+                           <MainPage headerProps={headerProps} />
+                        </Suspense>
+                     </ConsolePublishProvider>
                   </PublisherMuiThemeProvider>
                </DocumentStorageProvider>
             </ServerProvider>

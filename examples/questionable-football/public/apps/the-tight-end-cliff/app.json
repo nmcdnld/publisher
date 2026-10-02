@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "title": "Tight end has the steepest cliff: a top-6 TE outscored a TE13-24 by 84%",
+  "description": "Across the 2023-2025 seasons in half-PPR scoring, the average top-6 tight end scored 178.3 points against 96.7 for the 13th-24th finishers, the largest gap of any position. Wide receiver was the flattest at 48%.",
+  "createdAt": "2026-10-01T01:18:25.855Z",
+  "updatedAt": "2026-10-01T01:18:25.855Z",
+  "topics": [
+    "positional scarcity",
+    "draft strategy",
+    "tight end"
+  ],
+  "queries": {
+    "q1": {
+      "model": "fantasy.malloy",
+      "source": "player_seasons",
+      "malloy": "run: player_seasons -> position_cliff",
+      "view": "position_cliff",
+      "givens": {},
+      "title": "Average season by finish band, 2023-2025",
+      "grain": "one row per position"
+    }
+  },
+  "snapshot": {
+    "asOf": "2026-10-01T01:18:25.855Z",
+    "columns": {
+      "q1": [
+        {
+          "name": "position",
+          "type": "string",
+          "label": "Pos"
+        },
+        {
+          "name": "elite_avg",
+          "type": "number",
+          "unit": "number",
+          "label": "Top 6"
+        },
+        {
+          "name": "starter_avg",
+          "type": "number",
+          "unit": "number",
+          "label": "7th-12th"
+        },
+        {
+          "name": "depth_avg",
+          "type": "number",
+          "unit": "number",
+          "label": "13th-24th"
+        },
+        {
+          "name": "elite_premium",
+          "type": "number",
+          "unit": "percent",
+          "label": "Top 6 over 13th-24th"
+        },
+        {
+          "name": "starter_premium",
+          "type": "number",
+          "unit": "percent",
+          "label": "Top 6 over 7th-12th"
+        }
+      ]
+    },
+    "rows": {
+      "q1": [
+        {
+          "position": "TE",
+          "elite_avg": 178.3222222222222,
+          "starter_avg": 131.05,
+          "depth_avg": 96.71891891891893,
+          "elite_premium": 0.8437160404130724,
+          "starter_premium": 0.360718979185213
+        },
+        {
+          "position": "QB",
+          "elite_avg": 342.61999999999995,
+          "starter_avg": 281.64000000000004,
+          "depth_avg": 205.4377777777778,
+          "elite_premium": 0.6677555788722183,
+          "starter_premium": 0.2165175401221413
+        },
+        {
+          "position": "RB",
+          "elite_avg": 289.2544444444444,
+          "starter_avg": 224.1833333333333,
+          "depth_avg": 181.235,
+          "elite_premium": 0.5960186743423974,
+          "starter_premium": 0.2902584690109782
+        },
+        {
+          "position": "WR",
+          "elite_avg": 256.05888888888893,
+          "starter_avg": 198.89444444444447,
+          "depth_avg": 172.9494444444444,
+          "elite_premium": 0.48054184106466624,
+          "starter_premium": 0.2874109661741293
+        }
+      ]
+    }
+  },
+  "kind": "analysis",
+  "analysis": {
+    "details": [
+      "TE: 178.3 for a top 6, 131.1 for 7th-12th and 96.7 for 13th-24th, so an elite TE was worth 36% more than a starting-grade one and 84% more than the next tier.",
+      "QB: 342.6 against 205.4 (67% more), with the smallest gap among starters, 22% over the 7th-12th.",
+      "RB: 289.3 against 181.2 (60% more).",
+      "WR: 256.1 against 172.9 (48% more); the WR13-24 tier scored nearly as much as the RB13-24 tier.",
+      "Finish is the season rank within the position by total half-PPR points, weeks 1-17, averaged over all three seasons."
+    ],
+    "evidence": {
+      "query": "q1",
+      "kind": "bar",
+      "xKey": "position",
+      "series": [
+        {
+          "key": "elite_avg",
+          "label": "Top 6"
+        },
+        {
+          "key": "starter_avg",
+          "label": "7th-12th"
+        },
+        {
+          "key": "depth_avg",
+          "label": "13th-24th"
+        }
+      ],
+      "format": "number",
+      "caption": "Average half-PPR season points by finish band, 2023-2025",
+      "highlight": "TE"
+    }
+  }
+}

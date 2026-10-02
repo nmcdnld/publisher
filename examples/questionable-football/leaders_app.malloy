@@ -1,0 +1,46 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// The sources public/leaders.html queries: one season's fantasy leaderboard.
+// Season and position are givens, so the page's tabs change bound values and
+// never the query text: whatever a reader puts in `?pos=` is read by the
+// server as a filter on a string, never parsed as Malloy.
+##! experimental.givens
+import "fantasy.malloy"
+
+# description="The season the leaderboard ranks"
+# label="Season"
+given: SEASON :: number is 2025
+
+# description="QB, RB, WR, TE or K. Empty for every position"
+# label="Position"
+given: POSITION :: filter<string> is f''
+
+#(doc) Every player-season in the chosen season and position, for the leaderboard and the scarcity chart
+source: season_leaders is player_seasons extend {
+  where: season = $SEASON and position ~ $POSITION
+}
+
+#(doc) Every player-game in the chosen season and position, for the leaderboard's weekly sparklines and the season's best games
+source: season_games is player_games extend {
+  where: season = $SEASON and position ~ $POSITION
+
+  #(doc) Each player's points week by week, nested one list per player, for the leaderboard sparklines
+  view: weekly_by_player is {
+    group_by: player_id
+    nest: by_week is {
+      group_by:
+        # number=id
+        game_week
+      aggregate:
+        # number="0.0"
+        points is fantasy_points.sum()
+      order_by: game_week
+    }
+  }
+}
+
+#(doc) Every scoring event in the chosen season and position, for the scoring-mix tile
+source: season_events is fantasy_events extend {
+  where: season = $SEASON and position ~ $POSITION
+}

@@ -74,6 +74,12 @@ export interface DashboardProps {
    maxResultSize?: number;
    /** The rows shown and tiles explored, for the host to log or count. */
    onEvent?: DashboardEventHandler;
+   /**
+    * Leave the title to a host that prints its own heading. The description
+    * still renders, since it is markdown the host would otherwise have to
+    * render itself.
+    */
+   hideTitle?: boolean;
 }
 
 /**
@@ -94,6 +100,7 @@ export function Dashboard({
    height,
    maxResultSize,
    onEvent,
+   hideTitle,
 }: DashboardProps) {
    const parsed = parseResourceUri(resourceUri);
    const { apiClients } = useServer();
@@ -247,7 +254,7 @@ export function Dashboard({
    if (manifest.error) {
       return (
          <Stack spacing={2}>
-            <DashboardHeader manifest={manifest} />
+            <DashboardHeader manifest={manifest} hideTitle={hideTitle} />
             <Alert severity="error">{manifest.error}</Alert>
          </Stack>
       );
@@ -259,7 +266,7 @@ export function Dashboard({
 
    return (
       <Stack spacing={2}>
-         <DashboardHeader manifest={manifest} />
+         <DashboardHeader manifest={manifest} hideTitle={hideTitle} />
 
          <GivensPanel {...controls.panel} layout="bar" />
 
@@ -379,7 +386,18 @@ export function Dashboard({
  * Markdown here and not in a tile: prose BETWEEN tiles needs a tile kind the
  * format cannot express yet. This is the half that needs nothing new.
  */
-function DashboardHeader({ manifest }: { manifest: DashboardManifest }) {
+function DashboardHeader({
+   manifest,
+   hideTitle,
+}: {
+   manifest: DashboardManifest;
+   hideTitle?: boolean;
+}) {
+   if (hideTitle) {
+      return manifest.description ? (
+         <Prose variant="caption">{manifest.description}</Prose>
+      ) : null;
+   }
    return (
       <DashboardProse
          title={manifest.title ?? manifest.name}

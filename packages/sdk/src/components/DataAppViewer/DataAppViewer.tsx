@@ -11,10 +11,24 @@ import { parseResourceUri } from "../../utils/formatting";
 import {
    isPublisherResizeMessage,
    packageFileUrl,
+   type DataAppTheme,
 } from "../../utils/dataAppEmbed";
+import { useDataAppThemeBridge } from "./useDataAppTheme";
 
 interface DataAppViewerProps {
    resourceUri: string;
+   /**
+    * Drop the title row and the page padding around the frame, for a host
+    * that prints its own heading and offers its own way to open the app
+    * standalone.
+    */
+   hideHeader?: boolean;
+   /**
+    * The appearance the app is asked to draw in. Defaults to the Publisher
+    * theme in effect; a host with its own theme passes that, so the app
+    * follows the host's light/dark switch and palette.
+    */
+   theme?: DataAppTheme;
 }
 
 function parseDataAppResource(resourceUri: string) {
@@ -52,7 +66,11 @@ function parseDataAppResource(resourceUri: string) {
  * height (matching the standalone view) instead of collapsing to the app's
  * near-zero reported content height.
  */
-export default function DataAppViewer({ resourceUri }: DataAppViewerProps) {
+export default function DataAppViewer({
+   resourceUri,
+   hideHeader,
+   theme,
+}: DataAppViewerProps) {
    const { server, apiClients } = useServer();
    const parsed = parseDataAppResource(resourceUri);
    const environmentName = parsed?.environmentName ?? "";
@@ -98,6 +116,7 @@ export default function DataAppViewer({ resourceUri }: DataAppViewerProps) {
    // resize message; the runtime postMessages the real content height
    // within a frame of load.
    const [iframeHeight, setIframeHeight] = useState<number>(120);
+   useDataAppThemeBridge(iframeRef, theme);
 
    useEffect(() => {
       // Fill mode pins the iframe to 100%, so content-height resize messages are
@@ -137,7 +156,7 @@ export default function DataAppViewer({ resourceUri }: DataAppViewerProps) {
    return (
       <Box
          sx={{
-            p: 3,
+            ...(hideHeader ? {} : { p: 3 }),
             // Fill mode fills the available height of DataAppViewer's ancestor,
             // so it must render inside a height-constrained container. The
             // Publisher app provides one (MainPage's 100dvh flex chain); an SDK
@@ -145,42 +164,46 @@ export default function DataAppViewer({ resourceUri }: DataAppViewerProps) {
             // parent.
             ...(fillViewport
                ? { height: "100%", display: "flex", flexDirection: "column" }
-               : { maxWidth: 1200, mx: "auto" }),
+               : hideHeader
+                 ? {}
+                 : { maxWidth: 1200, mx: "auto" }),
          }}
       >
-         <Stack
-            direction="row"
-            alignItems="baseline"
-            spacing={1}
-            sx={{ mb: 1, flexShrink: 0 }}
-         >
-            <Typography
-               variant="h6"
-               sx={{ fontWeight: 600, letterSpacing: "-0.025em" }}
+         {!hideHeader && (
+            <Stack
+               direction="row"
+               alignItems="baseline"
+               spacing={1}
+               sx={{ mb: 1, flexShrink: 0 }}
             >
-               {title}
-            </Typography>
-            <Typography
-               variant="caption"
-               color="text.secondary"
-               sx={{ fontFamily: MONO_FONT_FAMILY }}
-            >
-               {dataAppPath}
-            </Typography>
-            <Box sx={{ flex: 1 }} />
-            <Tooltip title="Open standalone in new tab">
-               <IconButton
-                  size="small"
-                  href={standaloneUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Open standalone in new tab"
-                  sx={{ color: "text.secondary" }}
+               <Typography
+                  variant="h6"
+                  sx={{ fontWeight: 600, letterSpacing: "-0.025em" }}
                >
-                  <OpenInNewIcon fontSize="small" />
-               </IconButton>
-            </Tooltip>
-         </Stack>
+                  {title}
+               </Typography>
+               <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontFamily: MONO_FONT_FAMILY }}
+               >
+                  {dataAppPath}
+               </Typography>
+               <Box sx={{ flex: 1 }} />
+               <Tooltip title="Open standalone in new tab">
+                  <IconButton
+                     size="small"
+                     href={standaloneUrl}
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     aria-label="Open standalone in new tab"
+                     sx={{ color: "text.secondary" }}
+                  >
+                     <OpenInNewIcon fontSize="small" />
+                  </IconButton>
+               </Tooltip>
+            </Stack>
+         )}
          <Box
             sx={{
                border: "1px solid",

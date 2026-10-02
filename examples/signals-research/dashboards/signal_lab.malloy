@@ -1,0 +1,80 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// The signal lab as a no-code dashboard: the same event study public/lab.html
+// draws, as tiles Publisher lays out and filters itself. Edit it here or drag
+// it about in the Console's builder; the builder splices this file, so both
+// stay one artifact.
+//
+// The controls are declared in this file and bound on each tile, because a
+// given's binding is per declaration: one declared in lab_app.malloy cannot
+// drive a `where:` written here. These are `filter<string>` givens, unlike the
+// HTML page's plain strings, because here the Console draws the control and
+// encodes the filter itself.
+##! experimental.givens
+
+##" Every research signal, scored the same way: what the market did in the
+##" five sessions after the signal fired, against what the same symbols did
+##" over **every** session. That difference is the *edge*.
+##"
+##" Read **Verdict 5d** before the edge. A signal with fewer than 20 events is
+##" `Thin` however good it looks, and a bearish signal with a positive edge
+##" *failed*: the stock rose after it. **Bias edge** is signed by the signal's
+##" own direction, so there positive always means the classic reading held.
+##"
+##" Forward windows overlap and the data is two years of 33 symbols, so
+##" treat t-statistics as a ranking, not as significance.
+## artifact { title="Signal lab" tiles=["lab -> kpis", "lab -> board", "lab -> family_edge", "lab -> distribution", "lab -> recent"] } dashboard { columns=12 }
+import { securities, signal_catalog } from "../market.malloy"
+import { signal_events, symbol_suggest } from "../signals.malloy"
+
+# description="One or more signal families. Leave empty for all"
+# label="Family" control=multiselect suggest { source=signal_catalog dimension=family }
+given: FAMILY :: filter<string> is f''
+
+# description="One or more symbols. Leave empty for all"
+# label="Symbol" control=multiselect suggest { query=symbol_suggest dimension=symbol }
+given: SYMBOL :: filter<string> is f''
+
+# description="One or more themes (AI compute, Memory, Software...). Leave empty for all"
+# label="Theme" control=multiselect suggest { source=securities dimension=theme }
+given: THEME :: filter<string> is f''
+
+# description="Equity for the 27 stocks, ETF for the 6 benchmark funds"
+# label="Universe" control=select suggest { source=securities dimension=asset_class }
+given: UNIVERSE :: filter<string> is f''
+
+# description="Only count signals that fired on or after this session"
+# label="Events since"
+given: SINCE :: date is @2024-09-30
+
+#(doc) The signal lab dashboard's tiles, each over the signal events its controls select
+source: lab is signal_events extend {
+  # colspan=12
+  # label="Across every signal selected"
+  # big_value
+  view: kpis is {
+    aggregate: event_count, symbol_count, hit_rate_5d, base_hit_rate_5d, edge_5d
+  } + { where: family ~ $FAMILY, where: symbol ~ $SYMBOL, where: asset_class ~ $UNIVERSE, where: theme ~ $THEME, where: session_date >= $SINCE }
+
+  # colspan=12
+  # break
+  # label="Scorecard"
+  # subtitle="Ranked by five-session edge over the base rate"
+  view: board is scorecard + { where: family ~ $FAMILY, where: symbol ~ $SYMBOL, where: asset_class ~ $UNIVERSE, where: theme ~ $THEME, where: session_date >= $SINCE }
+
+  # colspan=6
+  # break
+  # label="Edge by family"
+  view: family_edge is edge_by_family + { where: family ~ $FAMILY, where: symbol ~ $SYMBOL, where: asset_class ~ $UNIVERSE, where: theme ~ $THEME, where: session_date >= $SINCE }
+
+  # colspan=6
+  # label="Five-session outcomes"
+  # subtitle="Forward return after every event, in 2-point buckets"
+  view: distribution is fwd_5d_distribution + { where: family ~ $FAMILY, where: symbol ~ $SYMBOL, where: asset_class ~ $UNIVERSE, where: theme ~ $THEME, where: session_date >= $SINCE }
+
+  # colspan=12
+  # break
+  # label="Latest events"
+  view: recent is event_log + { where: family ~ $FAMILY, where: symbol ~ $SYMBOL, where: asset_class ~ $UNIVERSE, where: theme ~ $THEME, where: session_date >= $SINCE }
+}

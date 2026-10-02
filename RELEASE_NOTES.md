@@ -31,6 +31,56 @@ One behaviour change to know about: `skills-npm.yml` now publishes only from `ma
 
 ---
 
+## [Unreleased] — an HTML data app can draw in its host's light/dark mode and theme
+
+**`/sdk/publisher.js` now tells a page which appearance to draw in.** It sets
+`data-theme="light"|"dark"` and `color-scheme` on `<html>`, following the OS
+setting standalone. Inside a host that sends its theme, it follows the host
+instead: it sets `data-theme-source="host"` and one `--publisher-<token>` custom
+property per token sent (`background`, `foreground`, `card`, `primary`,
+`chart-1`, ...), exposes the result as `Publisher.theme`, and fires a
+`publisher:theme` window event on every change so a page can repaint its canvas
+charts. The SDK's `DataAppViewer` now sends the Publisher theme, or the one in
+its new `theme` prop, and `useDataAppThemeBridge` does the same for any iframe.
+[docs/html-data-apps.md](docs/html-data-apps.md#theme) has the contract.
+
+**Nothing existing changes.** A page that does not style on these attributes
+looks as it did. The `questionable-football` and `signals-research` example
+packages use them.
+
+## [Unreleased] — a finding can be saved into its package as a data app
+
+**A package can now hold a saved finding: an analysis or a report, written as a
+data app under `public/apps/<slug>/`.** The app is two files. `app.json` is a
+manifest carrying the narrative, the Malloy behind each chart, and the rows the
+finding was written against; `index.html` is a generated stub that loads
+`/sdk/publisher-app.js`, a new script the server serves beside `/sdk/publisher.js`.
+That renderer is built from the destination's own components, so the standalone
+page draws the finding exactly as the insight it was saved from: the same
+compound visuals, chart programs and report blocks. The Console lists and opens one like any other data app, with no change to the
+Console. Its numbers are live and its prose is pinned: each query runs when the
+page opens, and the page falls back to the saved rows, saying so and why, when a
+query fails, returns no rows where the finding had some, or lacks a column the
+finding used. [docs/html-data-apps.md](docs/html-data-apps.md#manifest-backed-apps-a-saved-finding)
+has the format; `examples/storefront/public/apps/revenue-growth-by-year/` is one.
+
+**Writing one goes through `PUT /api/v0/environments/{env}/packages/{pkg}/data-apps/{slug}`**,
+with `GET` to read the manifest and its `contentHash` and `DELETE ?expectedHash=`
+to remove it. The rules match the dashboard write: omit `expectedHash` to create
+(409 if the slug exists), pass it to replace (409 if the file changed since you
+read it), 403 under `frozenConfig`. One rule is new: every query in the manifest
+is compiled against the target package before anything is written, and the save
+is refused with 400 and each failure when one does not compile there. A finding
+therefore saves only into the package its data came from. Like every other route
+the write is unauthenticated, and `author` in the manifest is whatever the client
+sent, so put the gateway in front before exposing it
+([docs/security-posture.md](docs/security-posture.md)).
+
+**Nothing existing changes.** A hand-written HTML data app is untouched, and
+`public/apps/` is only a convention: a directory there without an `app.json` is
+an ordinary data app. For a server build from a clone, `bun run build` now also
+builds the renderer bundle; until it has, `/sdk/publisher-app.js` answers 404.
+
 ## [Unreleased] — a reloaded package keeps its warm semantic index, and `embeddingIndex.status` means what it says
 
 **Reloading a package no longer costs you a lexically-ranked answer.** A reload

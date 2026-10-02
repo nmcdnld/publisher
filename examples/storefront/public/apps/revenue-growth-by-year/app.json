@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "kind": "analysis",
+  "title": "Revenue grew about a third each year",
+  "description": "Revenue rose 35% in 2024 and another 34% in 2025, to $912.9K: 81% above 2023.",
+  "createdAt": "2026-09-30T20:00:00Z",
+  "updatedAt": "2026-09-30T20:00:00Z",
+  "topics": ["revenue"],
+  "queries": {
+    "q1": {
+      "model": "storefront.malloy",
+      "source": "order_items",
+      "view": "sales_by_year",
+      "malloy": "run: order_items -> sales_by_year",
+      "title": "Revenue by year",
+      "grain": "one row per order year"
+    }
+  },
+  "snapshot": {
+    "asOf": "2026-09-30T20:00:00Z",
+    "columns": {
+      "q1": [
+        { "name": "order_year", "type": "number", "label": "Year" },
+        { "name": "total_sales", "type": "number", "unit": "currency", "label": "Revenue" }
+      ]
+    },
+    "rows": {
+      "q1": [
+        { "order_year": 2023, "total_sales": 503428.14 },
+        { "order_year": 2024, "total_sales": 681892.66 },
+        { "order_year": 2025, "total_sales": 912857.17 }
+      ]
+    }
+  },
+  "analysis": {
+    "details": [
+      "2024 revenue was $681.9K, up 35% on 2023's $503.4K.",
+      "2025 revenue was $912.9K, up 34% on 2024, so growth held its pace rather than slowing.",
+      "The view sums sale_price over every order line, whatever its status, so returned and cancelled orders are included."
+    ],
+    "evidence": {
+      "query": "q1",
+      "kind": "bar",
+      "xKey": "order_year",
+      "series": [{ "key": "total_sales", "label": "Revenue" }],
+      "format": "currency",
+      "caption": "total_sales by order year"
+    }
+  }
+}

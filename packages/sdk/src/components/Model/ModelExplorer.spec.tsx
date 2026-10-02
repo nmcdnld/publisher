@@ -15,7 +15,7 @@
  */
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import {
    clearCache,
    mockServerProvider,
@@ -30,6 +30,9 @@ mock.module("@malloydata/malloy-explorer", () => ({
    ),
    QueryPanel: ({ runQuery }: { runQuery: () => void }) => (
       <button onClick={runQuery}>Run</button>
+   ),
+   QueryActionBar: ({ runQueryString }: { runQueryString: () => void }) => (
+      <button onClick={runQueryString}>Run</button>
    ),
    ResizableCollapsiblePanel: ({ children }: { children: ReactNode }) => (
       <>{children}</>
@@ -78,6 +81,7 @@ mockServerProvider({ models: { executeQueryModel } });
 
 // Imported after the stubs above: a static import would hoist above them.
 const { ModelExplorer } = await import("./ModelExplorer");
+type QueryExplorerResult = import("./SourcesExplorer").QueryExplorerResult;
 
 const URI = "publisher://environments/env/packages/pkg/models/orders.malloy";
 
@@ -371,6 +375,81 @@ describe("host-supplied givens", () => {
             "TENANT",
          ]),
       );
+   });
+});
+
+describe("question mode's first question", () => {
+   const sourceWith = (name: string, measure: string) =>
+      JSON.stringify({
+         name,
+         schema: {
+            fields: [
+               {
+                  kind: "measure",
+                  name: measure,
+                  type: { kind: "number_type" },
+               },
+               {
+                  kind: "dimension",
+                  name: "status",
+                  type: { kind: "string_type" },
+               },
+            ],
+         },
+      });
+
+   it("offers every source's measures, and picking one selects its source", async () => {
+      window.localStorage.setItem("publisher.explorer.mode", "question");
+      const onSourceChange = mock((_index: number) => {});
+      const data: CompiledModel = {
+         sourceInfos: [
+            sourceWith("orders", "order_count"),
+            sourceWith("customers", "customer_count"),
+         ],
+      };
+      // Echoes the query and source back, as `Model` does, so the switch
+      // survives the host handing back what the explorer reported.
+      function Host() {
+         const [query, setQuery] = useState<QueryExplorerResult>();
+         const [index, setIndex] = useState(0);
+         return (
+            <ModelExplorer
+               data={data}
+               resourceUri={URI}
+               existingQuery={query}
+               onChange={setQuery}
+               initialSelectedSourceIndex={index}
+               onSourceChange={(next) => {
+                  onSourceChange(next);
+                  setIndex(next);
+               }}
+            />
+         );
+      }
+      try {
+         render(<Host />, { wrapper: serverWrapper });
+
+         const measure = (await screen.findByPlaceholderText(
+            "Choose a measure",
+         )) as HTMLInputElement;
+         fireEvent.mouseDown(measure);
+         expect(await screen.findByText("Order count")).toBeTruthy();
+         fireEvent.click(await screen.findByText("Customer count"));
+
+         await waitFor(() => expect(onSourceChange).toHaveBeenCalledWith(1));
+         await waitFor(() =>
+            expect(
+               (
+                  screen.getByPlaceholderText(
+                     "Choose a measure",
+                  ) as HTMLInputElement
+               ).value,
+            ).toBe("Customer count"),
+         );
+         expect(screen.getByDisplayValue("customers")).toBeTruthy();
+      } finally {
+         window.localStorage.removeItem("publisher.explorer.mode");
+      }
    });
 });
 

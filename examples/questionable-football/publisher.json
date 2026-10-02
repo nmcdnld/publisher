@@ -1,0 +1,5 @@
+{
+  "name": "questionable-football",
+  "version": "1.0.0",
+  "description": "Fantasy football over three seasons of NFL play-by-play (2023-2025): half-PPR points for every play, season finishes, the 2025 draft market against how each pick finished, and the 2026 draft board, schedule, lines and futures. Local DuckDB data, with a draft-day cheatsheet, season leaders, player and team pages as HTML data apps."
+}

@@ -71,7 +71,18 @@ if (process.env.SKIP_APP_BUNDLE === "1" && !fs.existsSync("../app/dist")) {
    fs.cpSync("../app/dist", "./dist/app", { recursive: true });
 }
 
-// Copy hand-authored vanilla-JS runtime served at /sdk/publisher.js.
+// Build the manifest renderer served at /sdk/publisher-app.js into src/runtime,
+// from the destination's own components so a saved finding draws as it did
+// there, then copy that directory, with the hand-authored runtime served at
+// /sdk/publisher.js, into the bundle.
+const runtimeBuild = Bun.spawnSync(["bun", "run", "build:standalone"], {
+   cwd: "../credible-demo",
+   stdout: "inherit",
+   stderr: "inherit",
+});
+if (runtimeBuild.exitCode !== 0) {
+   throw new Error("Building /sdk/publisher-app.js failed");
+}
 fs.cpSync("./src/runtime", "./dist/runtime", { recursive: true });
 
 // Ship a default publisher.config.json inside the bundle so that

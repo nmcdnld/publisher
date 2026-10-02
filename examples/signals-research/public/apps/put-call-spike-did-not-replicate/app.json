@@ -1,0 +1,356 @@
+{
+  "version": 1,
+  "title": "The put/call-spike edge did not survive a wider universe",
+  "description": "On AAPL, AMD, NVDA and TSLA, the original watchlist names still in the universe, a put/call spike still led five-session returns +1.41 points above base (t 2.1). On the 29 symbols added since, the same signal was worth +0.21 (t 0.5).",
+  "createdAt": "2026-09-30T20:00:00Z",
+  "updatedAt": "2026-09-30T20:00:00Z",
+  "topics": [
+    "signals",
+    "options flow",
+    "event study",
+    "replication"
+  ],
+  "queries": {
+    "q1": {
+      "model": "lab_app.malloy",
+      "source": "lab_signal",
+      "malloy": "run: lab_signal -> edge_by_symbol",
+      "view": "edge_by_symbol",
+      "givens": {
+        "SIGNAL": "put_call_spike"
+      },
+      "title": "Put/call spike: five-session edge by symbol",
+      "grain": "one row per symbol the signal fired on"
+    }
+  },
+  "snapshot": {
+    "asOf": "2026-09-30T20:00:00Z",
+    "columns": {
+      "q1": [
+        {
+          "name": "symbol",
+          "type": "string",
+          "label": "Symbol"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "label": "Name"
+        },
+        {
+          "name": "event_count",
+          "type": "number",
+          "label": "Firings"
+        },
+        {
+          "name": "hit_rate_5d",
+          "type": "number",
+          "unit": "percent",
+          "label": "Hit rate 5d"
+        },
+        {
+          "name": "edge_5d",
+          "type": "number",
+          "unit": "percent",
+          "label": "Edge vs base 5d"
+        },
+        {
+          "name": "edge_20d",
+          "type": "number",
+          "unit": "percent",
+          "label": "Edge vs base 20d"
+        }
+      ]
+    },
+    "rows": {
+      "q1": [
+        {
+          "symbol": "BE",
+          "name": "Bloom Energy",
+          "event_count": 37,
+          "hit_rate_5d": 0.5278,
+          "edge_5d": -0.0165,
+          "edge_20d": -0.0701
+        },
+        {
+          "symbol": "BFLY",
+          "name": "Butterfly Network",
+          "event_count": 37,
+          "hit_rate_5d": 0.5676,
+          "edge_5d": -0.0132,
+          "edge_20d": 0.0091
+        },
+        {
+          "symbol": "SMH",
+          "name": "VanEck Semiconductor ETF",
+          "event_count": 34,
+          "hit_rate_5d": 0.6364,
+          "edge_5d": -0.0053,
+          "edge_20d": 0.0008
+        },
+        {
+          "symbol": "FSLY",
+          "name": "Fastly",
+          "event_count": 34,
+          "hit_rate_5d": 0.5588,
+          "edge_5d": 0.0242,
+          "edge_20d": 0.03
+        },
+        {
+          "symbol": "SNOW",
+          "name": "Snowflake",
+          "event_count": 34,
+          "hit_rate_5d": 0.5294,
+          "edge_5d": 0.0082,
+          "edge_20d": -0.0076
+        },
+        {
+          "symbol": "CRM",
+          "name": "Salesforce",
+          "event_count": 34,
+          "hit_rate_5d": 0.4706,
+          "edge_5d": 0.0045,
+          "edge_20d": 0.0151
+        },
+        {
+          "symbol": "NBIS",
+          "name": "Nebius Group",
+          "event_count": 32,
+          "hit_rate_5d": 0.5313,
+          "edge_5d": -0.0291,
+          "edge_20d": -0.0365
+        },
+        {
+          "symbol": "NET",
+          "name": "Cloudflare",
+          "event_count": 32,
+          "hit_rate_5d": 0.6563,
+          "edge_5d": 0.0265,
+          "edge_20d": -0.0291
+        },
+        {
+          "symbol": "AMD",
+          "name": "Advanced Micro Devices",
+          "event_count": 32,
+          "hit_rate_5d": 0.6875,
+          "edge_5d": 0.0157,
+          "edge_20d": -0.0121
+        },
+        {
+          "symbol": "TWST",
+          "name": "Twist Bioscience",
+          "event_count": 31,
+          "hit_rate_5d": 0.4,
+          "edge_5d": -0.0017,
+          "edge_20d": -0.026
+        },
+        {
+          "symbol": "IREN",
+          "name": "IREN",
+          "event_count": 30,
+          "hit_rate_5d": 0.7,
+          "edge_5d": 0.0366,
+          "edge_20d": -0.0108
+        },
+        {
+          "symbol": "TTWO",
+          "name": "Take-Two Interactive",
+          "event_count": 30,
+          "hit_rate_5d": 0.7,
+          "edge_5d": 0.0068,
+          "edge_20d": -0.0001
+        },
+        {
+          "symbol": "NVDA",
+          "name": "Nvidia",
+          "event_count": 29,
+          "hit_rate_5d": 0.6897,
+          "edge_5d": 0.0101,
+          "edge_20d": 0.0222
+        },
+        {
+          "symbol": "PLTR",
+          "name": "Palantir",
+          "event_count": 28,
+          "hit_rate_5d": 0.5357,
+          "edge_5d": -0.0084,
+          "edge_20d": 0.016
+        },
+        {
+          "symbol": "MSTR",
+          "name": "Strategy",
+          "event_count": 28,
+          "hit_rate_5d": 0.5714,
+          "edge_5d": 0.0169,
+          "edge_20d": -0.0221
+        },
+        {
+          "symbol": "UVIX",
+          "name": "2x Long VIX Futures ETF",
+          "event_count": 28,
+          "hit_rate_5d": 0.5,
+          "edge_5d": -0.0273,
+          "edge_20d": -0.0427
+        },
+        {
+          "symbol": "QCOM",
+          "name": "Qualcomm",
+          "event_count": 27,
+          "hit_rate_5d": 0.5769,
+          "edge_5d": 0.0031,
+          "edge_20d": -0.0163
+        },
+        {
+          "symbol": "MU",
+          "name": "Micron Technology",
+          "event_count": 27,
+          "hit_rate_5d": 0.7037,
+          "edge_5d": 0.0196,
+          "edge_20d": 0.034
+        },
+        {
+          "symbol": "AAPL",
+          "name": "Apple",
+          "event_count": 26,
+          "hit_rate_5d": 0.5769,
+          "edge_5d": -0.0057,
+          "edge_20d": 0.0023
+        },
+        {
+          "symbol": "AVGO",
+          "name": "Broadcom",
+          "event_count": 26,
+          "hit_rate_5d": 0.6154,
+          "edge_5d": -0.0025,
+          "edge_20d": -0.0154
+        },
+        {
+          "symbol": "MRVL",
+          "name": "Marvell Technology",
+          "event_count": 26,
+          "hit_rate_5d": 0.5385,
+          "edge_5d": -0.0093,
+          "edge_20d": -0.0242
+        },
+        {
+          "symbol": "IWM",
+          "name": "iShares Russell 2000 ETF",
+          "event_count": 25,
+          "hit_rate_5d": 0.76,
+          "edge_5d": 0.0181,
+          "edge_20d": 0.0177
+        },
+        {
+          "symbol": "TSLA",
+          "name": "Tesla",
+          "event_count": 24,
+          "hit_rate_5d": 0.5417,
+          "edge_5d": 0.0381,
+          "edge_20d": 0.0662
+        },
+        {
+          "symbol": "GOOGL",
+          "name": "Alphabet",
+          "event_count": 23,
+          "hit_rate_5d": 0.6087,
+          "edge_5d": -0.0029,
+          "edge_20d": 0.0037
+        },
+        {
+          "symbol": "SNDK",
+          "name": "Sandisk",
+          "event_count": 23,
+          "hit_rate_5d": 0.6087,
+          "edge_5d": 0.0194,
+          "edge_20d": 0.0901
+        },
+        {
+          "symbol": "INTC",
+          "name": "Intel",
+          "event_count": 23,
+          "hit_rate_5d": 0.5217,
+          "edge_5d": -0.0086,
+          "edge_20d": 0.0258
+        },
+        {
+          "symbol": "META",
+          "name": "Meta",
+          "event_count": 22,
+          "hit_rate_5d": 0.5455,
+          "edge_5d": -0.001,
+          "edge_20d": 0.0429
+        },
+        {
+          "symbol": "QQQ",
+          "name": "Invesco QQQ Trust",
+          "event_count": 18,
+          "hit_rate_5d": 0.6667,
+          "edge_5d": 0.003,
+          "edge_20d": -0.0086
+        },
+        {
+          "symbol": "SPY",
+          "name": "SPDR S&P 500 ETF",
+          "event_count": 16,
+          "hit_rate_5d": 0.8125,
+          "edge_5d": 0.0057,
+          "edge_20d": -0.0001
+        },
+        {
+          "symbol": "DRAM",
+          "name": "Roundhill Memory ETF",
+          "event_count": 5,
+          "hit_rate_5d": 0.8,
+          "edge_5d": 0.0172,
+          "edge_20d": 0.1257
+        },
+        {
+          "symbol": "SPCX",
+          "name": "SpaceX",
+          "event_count": 4,
+          "hit_rate_5d": 0,
+          "edge_5d": -0.0783,
+          "edge_20d": -0.1177
+        },
+        {
+          "symbol": "CBRS",
+          "name": "Cerebras Systems",
+          "event_count": 4,
+          "hit_rate_5d": 0.5,
+          "edge_5d": 0.0173,
+          "edge_20d": -0.0782
+        },
+        {
+          "symbol": "SKHY",
+          "name": "SK hynix ADR",
+          "event_count": 2,
+          "hit_rate_5d": 0.5,
+          "edge_5d": -0.0301,
+          "edge_20d": 0.0055
+        }
+      ]
+    }
+  },
+  "kind": "analysis",
+  "analysis": {
+    "details": [
+      "A spike is the session a symbol's put/call volume ratio first closes two or more standard deviations above its own trailing 20-day mean. The bias is contrarian: heavy put buying is read as fear that is about to wash out.",
+      "On the first, five-stock version of this package it was the one signal of 21 to clear |t| ≥ 2. AAPL, AMD, NVDA and TSLA are still here, and on them it still does: 111 firings, 63% up five sessions later against 55% normally, +1.41 points over base.",
+      "Over the 29 symbols added since, 720 firings averaged +0.21 points (t 0.5). 18 of all 33 symbols show a positive edge and 15 a negative one, about the split chance gives.",
+      "Pooled, the signal reads +0.37 points at t 1.1: Noise. The earlier result is what testing 21 signals on five names should be expected to throw up once. That is the reason to re-run a finding on symbols it was not found on before acting on it."
+    ],
+    "evidence": {
+      "query": "q1",
+      "kind": "bar",
+      "xKey": "symbol",
+      "series": [
+        {
+          "key": "edge_5d",
+          "label": "Edge vs base, 5 sessions"
+        }
+      ],
+      "format": "percent",
+      "caption": "Average five-session return after a put/call spike minus the same symbol's average five-session return, Sep 2024 to Sep 2026, symbols ordered by firings"
+    }
+  }
+}

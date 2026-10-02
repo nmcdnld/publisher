@@ -36,6 +36,89 @@ export function isPublisherResizeMessage(
 }
 
 /**
+ * postMessage `type` a host sends an embedded data app with the host's
+ * appearance, so the app can draw in the host's light or dark mode and
+ * palette instead of its own. Payload shape is {@link PublisherThemeMessage}.
+ * Sent when the app asks (see {@link PUBLISHER_THEME_REQUEST_MESSAGE_TYPE})
+ * and again whenever the host's appearance changes.
+ */
+export const PUBLISHER_THEME_MESSAGE_TYPE = "publisher:theme";
+
+/**
+ * postMessage `type` an embedded data app's publisher.js runtime sends its
+ * host once it is listening, asking for a {@link PublisherThemeMessage}. The
+ * host cannot know when that is, so a theme posted before it would be lost.
+ */
+export const PUBLISHER_THEME_REQUEST_MESSAGE_TYPE = "publisher:theme-request";
+
+/**
+ * The tokens a host may send, named after the shadcn tokens most hosts
+ * already carry. The runtime sets each one on the app's root as
+ * `--publisher-<name>`. Every token is optional: an app falls back to its
+ * own value for any the host leaves out.
+ */
+export const DATA_APP_THEME_TOKENS = [
+   "background",
+   "foreground",
+   "card",
+   "muted",
+   "muted-foreground",
+   "border",
+   "ring",
+   "primary",
+   "primary-foreground",
+   "accent",
+   "accent-foreground",
+   "positive",
+   "negative",
+   "chart-1",
+   "chart-2",
+   "chart-3",
+   "chart-4",
+   "chart-5",
+   "font-sans",
+] as const;
+
+export type DataAppThemeToken = (typeof DATA_APP_THEME_TOKENS)[number];
+
+/** A host's appearance, as an embedded data app receives it. */
+export interface DataAppTheme {
+   mode: "light" | "dark";
+   /** CSS values: any color the browser parses, or a font-family list. */
+   tokens: Partial<Record<DataAppThemeToken, string>>;
+}
+
+export interface PublisherThemeMessage extends DataAppTheme {
+   type: typeof PUBLISHER_THEME_MESSAGE_TYPE;
+}
+
+/** Type guard for a theme request arriving from an embedded data app. */
+export function isPublisherThemeRequest(data: unknown): boolean {
+   return (
+      typeof data === "object" &&
+      data !== null &&
+      (data as { type?: unknown }).type === PUBLISHER_THEME_REQUEST_MESSAGE_TYPE
+   );
+}
+
+/**
+ * Send `theme` to the data app in `frame`. The target origin is `*` because
+ * the app may be served from a different origin than the host, and the
+ * message carries only colors and fonts.
+ */
+export function postDataAppTheme(
+   frame: HTMLIFrameElement | null | undefined,
+   theme: DataAppTheme,
+): void {
+   const message: PublisherThemeMessage = {
+      type: PUBLISHER_THEME_MESSAGE_TYPE,
+      mode: theme.mode,
+      tokens: theme.tokens,
+   };
+   frame?.contentWindow?.postMessage(message, "*");
+}
+
+/**
  * Derive the Publisher data origin (where static package files are served)
  * from the configured API base URL by stripping the trailing `/api/v0`.
  *

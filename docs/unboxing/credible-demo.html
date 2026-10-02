@@ -1,0 +1,1193 @@
+<!doctype html>
+<!--
+Copyright (c) Credible Data Inc.
+SPDX-License-Identifier: MIT
+-->
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Part 2 — Credible demo workspace · Publisher unboxing</title>
+  <style>
+    :root {
+      --ink: #16181d;
+      --ink-2: #4a505c;
+      --ink-3: #7b8190;
+      --rule: #e3e5ea;
+      --wash: #f6f7f9;
+      --accent: #1f6feb;
+      --accent-wash: #eaf2ff;
+      --warn: #9a6700;
+      --warn-wash: #fff8e1;
+      --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      --serif: "Iowan Old Style", "Charter", Georgia, serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font: 16px/1.6 var(--sans);
+      background: #fff;
+    }
+
+    .page {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 760px);
+      gap: 56px;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 56px 32px 120px;
+    }
+
+    nav.toc {
+      position: sticky;
+      top: 32px;
+      align-self: start;
+      font-size: 13px;
+    }
+
+    nav.toc .label {
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      margin-bottom: 12px;
+    }
+
+    nav.toc ol {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      counter-reset: toc;
+    }
+
+    nav.toc li {
+      counter-increment: toc;
+      margin: 0 0 8px;
+    }
+
+    nav.toc a {
+      color: var(--ink-2);
+      text-decoration: none;
+    }
+
+    nav.toc li a::before {
+      content: counter(toc, decimal-leading-zero);
+      font-family: var(--mono);
+      color: var(--ink-3);
+      margin-right: 8px;
+    }
+
+    nav.toc a:hover {
+      color: var(--accent);
+    }
+
+    nav.toc .series {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    nav.toc .series a {
+      display: block;
+      padding: 5px 0 5px 10px;
+      border-left: 2px solid var(--rule);
+      line-height: 1.35;
+    }
+
+    nav.toc .series a b {
+      display: block;
+      font: 600 10.5px/1.5 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+
+    nav.toc .series a[aria-current] {
+      border-left-color: var(--accent);
+      color: var(--ink);
+    }
+
+    nav.toc .series a[aria-current] b {
+      color: var(--accent);
+    }
+
+    main {
+      min-width: 0;
+    }
+
+    .series-foot {
+      margin-top: 88px;
+      padding-top: 28px;
+      border-top: 1px solid var(--rule);
+    }
+
+    .series-foot .label {
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+
+    .series-foot .card {
+      display: block;
+      margin-top: 14px;
+      padding: 18px 22px;
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      color: var(--ink);
+      text-decoration: none;
+      background: var(--wash);
+    }
+
+    .series-foot .card:hover {
+      border-color: var(--accent);
+    }
+
+    .series-foot .card .eyebrow {
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .series-foot .card .title {
+      display: block;
+      font: 600 22px/1.25 var(--serif);
+      margin: 8px 0 6px;
+    }
+
+    .series-foot .card .blurb {
+      display: block;
+      font-size: 15px;
+      color: var(--ink-2);
+    }
+
+    .series-foot .colophon {
+      font: 12px/1.5 var(--mono);
+      color: var(--ink-3);
+      margin-top: 18px;
+    }
+
+    header .kicker {
+      font: 600 12px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    h1 {
+      font: 600 44px/1.1 var(--serif);
+      letter-spacing: -.01em;
+      margin: 14px 0 16px;
+    }
+
+    .dek {
+      font-size: 19px;
+      color: var(--ink-2);
+      margin: 0 0 20px;
+    }
+
+    .byline {
+      font: 12px/1.5 var(--mono);
+      color: var(--ink-3);
+    }
+
+    h2 {
+      font: 600 28px/1.2 var(--serif);
+      margin: 72px 0 8px;
+      padding-top: 24px;
+      border-top: 1px solid var(--rule);
+    }
+
+    h2 .num {
+      font: 500 14px var(--mono);
+      color: var(--ink-3);
+      margin-right: 10px;
+      vertical-align: 4px;
+    }
+
+    h3 {
+      font-size: 17px;
+      margin: 36px 0 6px;
+    }
+
+    .lede {
+      color: var(--ink-2);
+      font-size: 17px;
+      margin-top: 0;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    code {
+      font: 13.5px var(--mono);
+      background: var(--wash);
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      padding: 0 4px;
+    }
+
+    pre {
+      font: 13px/1.55 var(--mono);
+      background: #0f1115;
+      color: #e6e8ee;
+      border-radius: 8px;
+      padding: 16px 18px;
+      overflow-x: auto;
+    }
+
+    pre .c {
+      color: #7d8597;
+    }
+
+    .tldr {
+      background: var(--accent-wash);
+      border: 1px solid #cfe0ff;
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin: 32px 0 0;
+    }
+
+    .tldr strong.label {
+      display: block;
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .tldr ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .tldr li {
+      margin: 4px 0;
+    }
+
+    .ed {
+      background: var(--warn-wash);
+      border-left: 3px solid #e3b341;
+      padding: 10px 14px;
+      margin: 16px 0;
+      font-size: 14px;
+      color: var(--warn);
+    }
+
+    .ed::before {
+      content: "Editor: ";
+      font-weight: 600;
+    }
+
+    figure {
+      margin: 28px 0;
+    }
+
+    figure.wide {
+      margin-left: -60px;
+      margin-right: -60px;
+    }
+
+    figure img {
+      width: 100%;
+      display: block;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px rgba(16, 24, 40, .06);
+    }
+
+    figcaption {
+      font-size: 13.5px;
+      color: var(--ink-2);
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    figcaption b {
+      color: var(--ink);
+    }
+
+    figcaption .src {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--ink-3);
+    }
+
+    .pair,
+    .trio {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      margin: 28px 0;
+    }
+
+    .pair figure,
+    .trio figure {
+      margin: 0;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14px;
+      margin: 16px 0;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--rule);
+      vertical-align: top;
+    }
+
+    th {
+      font: 600 11px var(--mono);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+
+    .callout {
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      padding: 14px 18px;
+      background: var(--wash);
+      font-size: 15px;
+      margin: 20px 0;
+    }
+
+    /* The flow diagrams */
+    .flow {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      margin: 24px 0;
+      font-size: 13px;
+      flex-wrap: wrap;
+      row-gap: 12px;
+    }
+
+    .flow .node {
+      flex: 1 1 0;
+      min-width: 120px;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: #fff;
+    }
+
+    .flow .node b {
+      display: block;
+      font-size: 13.5px;
+      margin-bottom: 2px;
+    }
+
+    .flow .node span {
+      color: var(--ink-2);
+    }
+
+    .flow .node.hl {
+      border-color: #9ec1ff;
+      background: var(--accent-wash);
+    }
+
+    .flow .arrow {
+      flex: 0 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ink-3);
+      font-family: var(--mono);
+    }
+
+    .loop {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 24px 0;
+      position: relative;
+    }
+
+    .loop .node {
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: #fff;
+      font-size: 13px;
+    }
+
+    .loop .node .step {
+      font: 600 11px var(--mono);
+      color: var(--accent);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .loop .node b {
+      display: block;
+      font-size: 14px;
+      margin: 4px 0;
+    }
+
+    .loop .node span {
+      color: var(--ink-2);
+    }
+
+    .loop .node.future {
+      border-style: dashed;
+      background: var(--wash);
+    }
+
+    .loop-back {
+      font: 12px var(--mono);
+      color: var(--ink-3);
+      text-align: center;
+      margin-top: -4px;
+    }
+
+    .tag {
+      display: inline-block;
+      font: 600 10.5px var(--mono);
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      padding: 1px 6px;
+      border-radius: 4px;
+      vertical-align: 2px;
+    }
+
+    .tag.now {
+      background: #dafbe1;
+      color: #1a7f37;
+    }
+
+    .tag.next {
+      background: #fff1c2;
+      color: #9a6700;
+    }
+
+    .tag.later {
+      background: #eef0f4;
+      color: var(--ink-2);
+    }
+
+    @media (max-width: 960px) {
+      .page {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+
+      nav.toc {
+        display: none;
+      }
+
+      figure.wide,
+      .trio {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      .pair,
+      .trio,
+      .loop {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <nav class="toc">
+      <div class="series">
+        <div class="label">Publisher unboxing</div>
+        <a href="index.html"><b>Part 1</b>Unboxing Publisher</a>
+        <a href="credible-demo.html" aria-current="page"><b>Part 2</b>Credible demo workspace</a>
+      </div>
+      <div class="label">Contents</div>
+      <ol>
+        <li><a href="#what">The demo workspace</a></li>
+        <li><a href="#library">The workspace Library</a></li>
+        <li><a href="#publish">Publish from Publisher</a></li>
+        <li><a href="#for-you">For you and the Studio</a></li>
+        <li><a href="#chat">Chat, and promoting what it finds</a></li>
+        <li><a href="#customize">Making it yours</a></li>
+        <li><a href="#composer">The composer</a></li>
+        <li><a href="#future">Where it could go</a></li>
+        <li><a href="#next">Next steps</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <header>
+        <div class="kicker">Publisher unboxing · Part 2 of 2 · Credible demo workspace</div>
+        <h1>Credible demo workspace: a front door for Publisher</h1>
+        <p class="dek">Before getting access to the actual Credible web app, I wanted to build out a standalone
+          prototype to
+          explore
+          Malloy-based content consumption and discoverability UX: a front door to Publisher where the
+          workspace's packages fill its library with content from day one, AI drafts insights from it, and anything
+          worth keeping
+          saves back into the package it came from.</p>
+        <div class="byline">Noah Mac · product + design engineering update · Sept 28 - Oct 1, 2026
+        </div>
+
+        <div class="tldr">
+          <strong class="label">TL;DR</strong>
+          <ul>
+            <li><b>The Library starts full of content.</b> Every dashboard, notebook, data app, and model contained by
+              the packages installed on the workspace is
+              shown from a unified Library view, next to what people have
+              saved and posted <em>outside</em> the package.
+            </li>
+            <li><b>A Publish button in the Console.</b> Any query result or dashboard can be handed over to the Credible
+              workspace for review, iteration, or just for a more consumption-oriented experience when sharing data.
+            </li>
+            <li><b>A promote button in the workspace.</b> Going the other way, <i>Save</i> keeps a
+              chat response, query result, or AI generated insight in your personal library, or can write it into its
+              package as
+              saved content for everyone in the workspace to access.</li>
+            <li><b>A new "insight" content primitive.</b> One <code>app.json</code> manifest captures a finding
+              described in text, the
+              queries behind it, the data app it uses, and a snapshot of the rows. It lives in the package, versioned
+              with the
+              model,
+              and every query must compile against its package before it can be saved.</li>
+            <li><b>Autonomous AI insights, with a person in the loop.</b> The Studio drafts grounded insights
+              on a
+              schedule, and a configurable gate allows the workspace admin to approve or reject each one before it
+              reaches the team's
+              <i>For you</i>
+              pages. What people read, save, dismiss, and follow
+              steers what
+              the
+              Studio looks for next. Agents referenced in the comment threads can make iterative improvements, fix
+              bugs, and make note of follow-up topics to investigate. Over time, the generated content goes from
+              reporting on
+              the facts contained by the
+              model to
+              proposing new additions to the model.
+            </li>
+            <li><b>A workspace that feels like home.</b> Usually a premium feature, each workspace
+              has its own whitelabeling customization options including its name, logo, and
+              theme. Every style token, including the chart palette, is re-derived for light and dark, and embedded
+              Publisher content respects the same tokens.</li>
+          </ul>
+        </div>
+      </header>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="what"><span class="num">01</span>The demo workspace</h2>
+      <p class="lede">A separate app within the Publisher repo, built first for the people who read and act on data
+        rather than
+        the people who model it. It builds on top of the Publisher REST API.</p>
+
+      <p>Part 1 ended with two packages full of content and an explorer that assumes its user already knows
+        Malloy or software engineering concepts. This prototype is my guess at where everyone else arrives, and
+        how
+        they discover what's already there: a consumption-oriented workspace that knows what content its packages serve,
+        drafts
+        insights from them,
+        and saves anything worth keeping back into the package it came from, so the model stays the source of
+        truth.</p>
+
+      <figure class="wide">
+        <img src="img/credible-demo/discover.png" alt="The For You home page">
+        <figcaption><b>For You, the home page.</b> A briefing written from this week's numbers, with its KPI deltas
+          inline. Below it are the chat composer, suggested starter questions, and the "For you" generated content, each
+          with a dynamic custom chart and a <code>package · source · view</code> reference citing where it came from.
+        </figcaption>
+      </figure>
+
+      <table>
+        <tr>
+          <th>Surface</th>
+          <th>Route</th>
+          <th>What it's for</th>
+        </tr>
+        <tr>
+          <td>For You</td>
+          <td><code>/</code></td>
+          <td>The briefing, AI-drafted insight cards, what's trending, and where you left off</td>
+        </tr>
+        <tr>
+          <td>Library</td>
+          <td><code>/library</code></td>
+          <td>Personal and workspace scopes; everything packages serve plus everything your team saved to the workspace
+          </td>
+        </tr>
+        <tr>
+          <td>Chats</td>
+          <td><code>/chat/:id</code></td>
+          <td>Threads with the AI analyst; every answer is grounded and can be saved as an insight
+          </td>
+        </tr>
+        <tr>
+          <td>Insight</td>
+          <td><code>/insight/:id</code></td>
+          <td>One finding: a description, query, results, comments, and related content</td>
+        </tr>
+        <tr>
+          <td>Package pages</td>
+          <td><code>/packages/:pkg/{dashboards,models,notebooks,apps}/…</code></td>
+          <td>Publisher content rendered inside the shell, with details and related content</td>
+        </tr>
+      </table>
+
+      <p><b>Stack.</b> The prototype lives in <code>packages/credible-demo</code> and runs on <code>:5180</code> over
+        Publisher on <code>:4000</code>. It uses React 19, Vite, Tailwind and shadcn/Radix for the shell, and the
+        Publisher SDK for embedded dashboards, models, notebooks and data apps.
+
+      </p>
+      <p>The AI analyst runs as a Cloudflare
+        Worker
+        at
+        <code>/api/analyst/*</code>, served through Vite in development. It has two stages. An <i>explorer</i> subagent
+        uses four
+        tools (<code>list_sources</code>, <code>describe_source</code>, <code>run_query</code>,
+        <code>compute_metric</code>) and returns findings. A <i>presenter</i> subagent turns those findings into
+        a report spec.
+      </p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="library"><span class="num">02</span>The workspace Library, full on day one</h2>
+      <p class="lede">A Library that starts empty is slower to fill. This one is a unified view of everything the
+        workspace's packages already publish, next to what people have saved and posted more casually.</p>
+
+      <figure class="wide">
+        <img src="img/credible-demo/library-workspace.png" alt="Workspace library">
+        <figcaption><b>Workspace scope.</b> Posts from workspace members and from Credible AI sit beside the package's
+          own content:
+          48 items, 40 of them in a package. The left rail lists packages (with counts read from Publisher) and
+          collections. The filters split items by kind, by channel, and by whether the content lives in a package or
+          only on the
+          workspace.
+        </figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/credible-demo/library-package.png" alt="Library filtered to questionable-football">
+        <figcaption><b>One package, as Library content.</b> Picking <code>questionable-football</code> shows its
+          <code>publisher.json</code> description and its 16 files: three dashboards with live thumbnails, the notebook,
+          four HTML pages, two saved insights, and six models. Each one is "In a package"; nobody else had to add it
+          after
+          the admin or sales engineer set up the workspace.
+        </figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/credible-demo/package-html-app.png" alt="Cheatsheet inside the demo workspace">
+        <figcaption><b>A custom data app, embedded for consumption.</b> The Cheatsheet from <a
+            href="index.html#football">Part
+            1</a> runs unmodified inside the Credible demo workspace, with a structured details panel and multi-player
+          comment thread UX that
+          Publisher
+          currently has no
+          place for.</figcaption>
+      </figure>
+      <figure class="wide">
+        <img src="img/credible-demo/package-data-app.png" alt="Saved insight rendered natively">
+        <figcaption><b>A saved insight, rendered natively.</b> The <code>app.json</code> manifest is read and drawn
+          with the workspace's own components rather than in an iframe, so it gets the workspace theme,
+          cohesive body text, a
+          <code>package · source · view</code> citation, as well as the structured details panel and multi-player
+          comment thread
+          UX shared by all content.
+        </figcaption>
+      </figure>
+
+
+      <figure class="wide">
+        <img src="img/credible-demo/library-personal.png" alt="Personal library">
+        <figcaption><b>Personal scope.</b> What you've kept for yourself: insights saved from chat, your own queries,
+          and
+          your
+          collections. Each item is labeled either <i>In storefront</i>, when it's linked to a package, or
+          <i>Not in a package</i>, when it lives only in your workspace library.
+        </figcaption>
+      </figure>
+
+      <h3>Related content derived from the source code</h3>
+      <p>Every page's structured details panel links its related content. The links are read from what the files
+        declare
+        (imports, sources, tile queries, model paths in a data app's page), never guessed from names or tags. On an
+        insight,
+        that means <i>Depends on</i> <code>storefront.malloy</code>, <i>Also reads</i> <code>order_items</code> (five
+        other analyses), and <i>Referenced in</i> the chat thread that produced it. This builds a content graph that the
+        composer and For
+        you page's autonomous recommendation loop can leverage.</p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="publish"><span class="num">03</span>A new entry point: Publish from Publisher</h2>
+      <p class="lede">The Publisher's results used to stay in the Publisher. Now every query result and every dashboard
+        has
+        a Publish button that hands it to the Credible workspace for review, for iteration, or just for a more
+        consumption-oriented experience when sharing data.</p>
+
+      <div class="flow">
+        <div class="node"><b>Console</b><span>Run a query, or open a dashboard</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Publish dialog</b><span>Title, description, and what gets sent</span></div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>/publish#draft=…</b><span>Review before posting</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Where it goes</b><span>Into its package for everyone, or kept for you; whether to post to
+            channels</span>
+        </div>
+      </div>
+
+      <figure class="wide">
+        <img src="img/credible-demo/publish-console-dialog.png" alt="The Console's Publish dialog">
+        <figcaption><b>In the Console.</b> The Question-mode result from <a href="index.html#question">Part 1</a>, being
+          published. The dialog shows exactly what leaves:
+          <code>examples / storefront › storefront.malloy › order_items</code>, 10 of 10 rows by 2 columns, and the
+          Malloy. A dashboard sends a link with its current filters instead of rows.
+        </figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/credible-demo/publish-review.png" alt="Review before posting">
+        <figcaption><b>In the demo workspace.</b> Nothing is shared until you press
+          <i>Post</i>. The chart and Malloy query is copied from the Publisher's result, and <i>Where it
+            goes</i> picks a scope, an address under
+          <code>storefront/public/apps/</code>, and which channels to notify. In this prototype the draft arrives as
+          versioned
+          base64url JSON in <code>#draft=…</code>, a fragment that never reaches a server, so no backend is needed. A
+          future version would hand it over through a REST API instead, lifting the URL-length ceiling on insight size
+          and
+          leaving an authenticated record of what was sent.
+        </figcaption>
+      </figure>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="for-you"><span class="num">04</span>For You, and the insight Studio</h2>
+      <p class="lede">The new For You section shows the insights the workspace features. The Studio is where AI-drafted
+        insights are
+        generated, and a configurable gate decides whether each one is featured automatically or waits for the
+        workspace admin to approve or reject it.</p>
+
+      <figure class="wide">
+        <img src="img/credible-demo/discover-trending.png" alt="For you, trending, and resume">
+        <figcaption><b>Below the fold.</b> <i>Trending</i> is what the team is recently accessing, with view counts and
+          readers'
+          avatars, across every content kind. <i>Resume</i> lists threads and queries you left open, with the source
+          each one uses.</figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/credible-demo/studio.png" alt="Studio">
+        <figcaption><b>The Studio.</b> Candidates on the left, each with its detector (<i>Mix shift</i>, <i>Driver</i>),
+          a score, and a sparkline. On the right is the inspector, where you check a candidate before featuring it: the
+          chart, the rows behind it, the Malloy, and a preview of its For you card.
+        </figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/credible-demo/studio-recipe.png" alt="Generate insight recipe">
+        <figcaption><b>One click, one new insight.</b> Each press is chosen to cover what the existing insights don't.
+          You can steer it in plain words ("anything unusual in returns"), limit it to kinds of finding (changes,
+          anomalies, mix shifts, drivers), limit it to specific sources, or throw the kitchen sink at it to see what it
+          will find.</figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/credible-demo/studio-schedule.png" alt="Studio schedule">
+        <figcaption><b>On a schedule, with the gate.</b> Every day at 6:00 AM: look for all four kinds of finding in
+          every source, feature the top 3 scoring 60 or more automatically, and leave the rest waiting as candidates
+          for the admin to approve or reject.</figcaption>
+      </figure>
+
+      <h3>Every number is checked</h3>
+      <p>Each draft insight must pass two checks. Every number in it
+        must be a metric computed by <code>compute_metric</code> from a query result, and every chart must read only
+        this run's datasets and render headless. A draft that fails gets one repair turn, then it's dropped, and a
+        shallow
+        run lists what it threw out.</p>
+
+      <h3>The workspace suggests what to read next</h3>
+      <figure class="wide">
+        <img src="img/credible-demo/analysis-for-you.png" alt="For you panel on an analysis">
+        <figcaption><b>For You recommendations, on every insight.</b> At the bottom of the structured details panel, one
+          content card is featured
+          at a
+          time. Paging past the last card asks the Studio for more like this one</figcaption>
+      </figure>
+      <p>The ranking is deliberately simple and readable today. An insight's own score, plus 0.25 per topic it shares
+        with what you're reading, 0.1 for the same source, 0.15 for the same view, and 0.1 if a person featured it.
+        Insights you've opened this session drop behind ones you haven't. Dismissing one says "You'll see fewer insights
+        like this," with an undo. Future work should make this work across sessions and users too.</p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="chat"><span class="num">05</span>Chat, and promoting what it finds</h2>
+      <p class="lede">A chat response, a query result, or an AI-generated insight all share one Save button. One click
+        keeps it in your personal Library, and promoting it writes it into its package for everyone in the
+        workspace.</p>
+
+      <figure class="wide">
+        <img src="img/credible-demo/chat-thread.png" alt="A chat thread">
+        <figcaption><b>A grounded answer.</b> <i>Why is West outperforming?</i> The answer gives a confidence level and
+          a status (<i>Accepted</i>), a chart with its source line
+          (<code>storefront · order_items · sales_by_region</code>), and the actions: <i>Save</i> and the Malloy. Admins
+          also get <i>Show work</i>, the
+          full tool trace. <span class="src">/chat/th-west</span>
+        </figcaption>
+      </figure>
+
+      <div class="flow">
+        <div class="node"><b>Chat answer</b><span>A draft; nothing kept yet</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Save for me</b><span>An analysis in your personal Library</span></div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>Promote: Save to storefront…</b><span>A saved insight at
+            <code>public/apps/&lt;slug&gt;/</code></span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Also add its query</b><span>Optional: a <code>view:</code> or <code>query:</code> in the
+            model</span></div>
+      </div>
+
+
+      <figure class="wide">
+        <img src="img/credible-demo/chat-save-menu.png" alt="Save menu">
+        <figcaption><b>Save, or promote.</b> <i>Save</i> keeps it for you. The menu beside it, headed <i>For
+            everyone in the workspace</i>, promotes it with <i>Save to storefront…</i>, naming the package the data
+          came from.
+        </figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/credible-demo/chat-save-to-package.png" alt="Save to storefront dialog">
+        <figcaption><b>Save to a package.</b> An address, title and description, and <i>1 query, checked against
+            storefront — Compiles</i>. Publisher compiles every query in the package before it writes anything, so a
+          finding can only be saved where its data lives.</figcaption>
+      </figure>
+
+      <p>Promoting writes the answer into the package as the insight primitive proposed in <a
+          href="index.html#teardown">Part 1</a>, a manifest-backed data app: the claim, the details, the evidence
+        chart, the queries, and a snapshot of the rows, written through <code>PUT …/data-apps/{slug}</code> with the
+        same compile-first,
+        hash-checked, rollback rules as the dashboard write. Once saved, it is the same object in both places. The
+        Console lists it under the package, an agent finds it with <code>get_context</code>, and it's reviewed and
+        versioned with the model. The toggle at the bottom continues into the promote wizard, which can also add the
+        query to the model as a named <code>view:</code> or <code>query:</code>.</p>
+
+      <figure class="wide">
+        <img src="img/credible-demo/console-saved-insight.png"
+          alt="The saved West insight opened in the Publisher Console">
+        <figcaption><b>The same insight, from the Publisher side.</b> Opened from the <code>storefront</code> package
+          in the Console, the promoted West answer is a standard data app: the claim, the same evidence chart, and its
+          <code>package · source · view</code> line are all contained by the package's manifest and source
+          code.
+        </figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/credible-demo/analysis.png" alt="Analysis page">
+        <figcaption><b>An analysis, once kept.</b> The claim, the evidence chart, the
+          query and its rows (copy or CSV), and the details rail: author, owner, status, package, model, source and
+          view. Below it, the source's card with its joins, then what it depends on and what else reads the same source.
+          <span class="src">/analysis/an-west</span>
+        </figcaption>
+      </figure>
+      <figure class="wide">
+        <img src="img/credible-demo/analysis-end.png" alt="Comments on an analysis">
+        <figcaption><b>The discussion stays with the insight.</b> When an insight is saved into its package, its
+          comments go with it, so the conversation isn't left behind in someone's Library.</figcaption>
+      </figure>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="customize"><span class="num">06</span>Making it yours: themes and white-labeling</h2>
+      <p class="lede">A workspace should feel like home. Borrowing from embedded analytics, that means it should look
+        like its owner's product, not like ours.</p>
+
+      <p>Everything lives in one menu. Switch workspace; set the name, logo and packages; choose
+        System, Light or Dark; pick the workspace theme; and choose who the analyst treats you as (an <i>Admin</i>
+        sees the trace, an <i>End user</i> doesn't).</p>
+      <figure>
+        <img src="img/credible-demo/theme-picker-crop.png" alt="Theme picker">
+        <figcaption><b>Workspace theme.</b> Seven built-in themes, each a surface gray ramp paired with an accent.
+          Type a name to create your own from any surface and accent.</figcaption>
+      </figure>
+
+
+      <figure class="wide">
+        <img src="img/credible-demo/theme-sky-light.png" alt="Sky, light">
+        <figcaption><b>Sky</b>, light.</figcaption>
+      </figure>
+      <figure class="wide">
+        <img src="img/credible-demo/theme-lavender-dark.png" alt="Lavender, dark">
+        <figcaption><b>Lavender</b>, dark.</figcaption>
+      </figure>
+      <figure class="wide">
+        <img src="img/credible-demo/theme-oxide-dark.png" alt="Oxide, dark">
+        <figcaption><b>Oxide</b>, dark.</figcaption>
+      </figure>
+
+
+      <h3>How theming works</h3>
+      <ul>
+        <li><b>Two independent axes.</b> <i>Mode</i> (system, light or dark) is personal. The <i>theme</i> belongs to
+          the workspace. Custom themes are shared across workspaces.</li>
+        <li><b>Every token is derived, not hand-picked.</b> From one 11-step gray ramp and one 4-step accent,
+          <code>lib/theme.ts</code> writes every shadcn token for both modes: background, card, muted, border, ring,
+          primary, and the five sidebar tokens. Dark surfaces are made by lifting the theme's dark background toward a
+          mid-tone of its own ramp with <code>color-mix(in oklab, …)</code>, because ramps differ in how dark their low
+          end is. So every utility class, including <code>bg-chart-2/15</code>, follows the theme with no per-component
+          work.
+        </li>
+        <li><b>Charts follow the accent.</b> The five chart colors stay the same, but their order rotates so the series
+          nearest the accent's hue comes first, keeping the adjacency the palette was designed around. Renderers that
+          can't read <code>oklch()</code> (Vega) get hex.</li>
+        <li><b>Embedded content matches.</b> <code>useDataAppTheme()</code> reads the computed tokens off the document
+          and passes them to every embedded Publisher dashboard and data app as a <code>DataAppTheme</code>. The
+          dashboard thumbnails in the white-label shot below are Publisher content, drawn in the workspace's colors.
+        </li>
+      </ul>
+
+      <h3>White-labeling</h3>
+      <figure class="wide">
+        <img src="img/credible-demo/whitelabel-library.png" alt="White-labeled workspace">
+        <figcaption><b>Essentially the same app as Questionable Football.</b> The workspace has its own name and logo in
+          the
+          sidebar, the Sage theme in dark mode, and is scoped to one package, so the Library holds the 16 items from
+          <code>questionable-football</code> and nothing else. The dashboards, notebooks, and data apps
+          are all themed consistently as expected.
+        </figcaption>
+      </figure>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="composer"><span class="num">07</span>The composer: point at the object-level thing</h2>
+      <p class="lede">Questions about data go wrong when the question is vague about what it's about. In the composer,
+        you type <code>@</code> and pull in the exact entity you want to reference.</p>
+
+      <p>Eight kinds of entity can be mentioned: <b>sources</b>, <b>dashboards</b>, <b>notebooks</b>, <b>data apps</b>,
+        <b>models</b>, <b>packages</b>, and this app's own <b>insights</b> and <b>threads</b>. Handles are unique per
+        workspace, prefixed with the package when two collide. A mention sends the entity's definition to the AI
+        analyst as an attachment,
+        and, more usefully, helps the AI analyst understand what the answer should be grounded in. The composer also
+        takes
+        uploaded attachments and transcribes voice input.
+      </p>
+
+      <div class="pair">
+        <figure>
+          <img src="img/credible-demo/composer-mention.png" alt="Mention menu">
+          <figcaption><b>Type <code>@</code>.</b> Every entity in the workspace, grouped and tabbed by kind. Each object
+            shows its package and path, a summary (<i>10 dimensions, 8 measures, 8 views</i>), and what it would cost in
+            context (<i>~1.7k tokens</i>).</figcaption>
+        </figure>
+        <figure>
+          <img src="img/credible-demo/composer-mention-filtered.png" alt="Filtered mention menu">
+          <figcaption><b>Keep typing to narrow it.</b> <code>@draft</code> finds the <i>Draft market</i> dashboard and
+            the notebook that mentions it, while package sources are still being read in the background.</figcaption>
+        </figure>
+      </div>
+
+      <div class="pair">
+        <figure>
+          <img src="img/credible-demo/composer-mentions-placed.png" alt="Mentions placed">
+          <figcaption><b>Mentions become chips.</b> <code>@draft-market</code> and <code>@season-leaders</code> are
+            placed inline and pinned above the input, so you can see exactly what goes with the message. When clicked,
+            these chips open the referenced objects in a new tab.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/credible-demo/composer-model-picker.png" alt="Model picker with context budget">
+          <figcaption><b>The context budget.</b> The model picker (Credible One, Claude Sonnet 5.5, GPT-5.6, Gemini 3.8
+            Flash) breaks down what the message will cost: system, tools and grounding 4.2k, <code>@</code> references
+            2.7k, your message 11, out of 200k.</figcaption>
+        </figure>
+      </div>
+
+      <p>Credible One is an alias for Opus 5.5, the model Credible recommends today. Picking it means picking
+        Credible's recommendation rather than a specific vendor's model: when a better model ships, Credible One moves
+        to it, and nobody has to change a setting or retrain a habit. The other entries in the picker are there for
+        teams that have a contract, a data-residency rule, or a preference that points at a particular provider.</p>
+
+      <p>Because every request already passes through it, Credible One is also where improvement can land later. It
+        could become a model tuned for analytics work (writing Malloy, choosing the right grain, refusing to guess a
+        field name), or one adapted to a single workspace, learning from its models, its saved insights, and the
+        answers its analysts have marked correct. Either way, the name in the picker stays the same.</p>
+
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="future"><span class="num">08</span>Where it could go</h2>
+      <p class="lede">Together, the prototype's parts make one loop: what the workspace values steers what the AI looks
+        for, which content is featured, and what the AI finds eventually turns into proposed changes to the model. The
+        pieces exist here in rough
+        form, but none of it has been compared against the real product or validated by real users yet.</p>
+
+      <div class="loop">
+        <div class="node">
+          <div class="step">1 · Curate</div>
+          <b>What the workspace values</b>
+          <span>Featured and dismissed insights, saves, follows, collections, comments, channels, and what people access
+            and how frequently.</span>
+        </div>
+        <div class="node">
+          <div class="step">2 · Steer</div>
+          <b>Recipes that learn</b>
+          <span>Those signals become the Studio's instructions, per person and per workspace, instead of
+            a fixed daily recipe.</span>
+        </div>
+        <div class="node future">
+          <div class="step">3 · Explore</div>
+          <b>Autonomous analysis</b>
+          <span>Runs that follow up on their own findings: a change leads to a driver, then a segment, then a comparison
+            against last year.</span>
+        </div>
+        <div class="node future">
+          <div class="step">4 · Propose</div>
+          <b>Semantic exploration</b>
+          <span>Walk the model's graph, then propose the dimension, measure, join or <code>#(doc)</code> that would have
+            made a finding easier to reach.</span>
+        </div>
+      </div>
+      <div class="loop-back">↺ what people do with step 4's proposals feeds back into step 1</div>
+
+      <p>Some ideas from this prototype I'd like to explore further:</p>
+      <ul>
+        <li><b>One content library for people and teams.</b> The <a href="#library">Library</a> becomes the shared home
+          for everything a user or team makes, not just what ships in a package: share an insight or query with a
+          teammate or agent, comment and iterate on it together, and curate content for the team, whether or not it
+          ever
+          gets promoted into the package.
+        </li>
+        <li><b>A first-party chat client.</b> The <a href="#composer">composer</a> goes well beyond the Credible App's
+          workspace chat bar, and that may cut against how Credible pitches itself today: as the engine that plugs into
+          the agent you already use (Claude, ChatGPT, Gemini, or Cursor and Claude Code for coding) over MCP, rather
+          than another vendor's chat window. Owning the client is what makes <code>@</code> mentions of workspace
+          objects, the context budget, and
+          one-click saving to the Library possible, but it competes with tools analysts already use. One middle path is
+          to keep MCP as the primary surface and treat the composer as the in-product option for people who don't live
+          in an AI client.
+        </li>
+        <li><b>Insights that check themselves.</b> A saved insight keeps the rows it was written against, so re-running
+          it on a schedule and flagging when the live chart disagrees with the text description is cheap. The tight end
+          cliff in
+          <a href="index.html#football">Part 1</a> already records its date for this reason, and it's the natural
+          place to meet Publisher's materialization scheduler.
+        </li>
+        <li><b>Model proposals.</b> Walk the model as a graph to find gaps (measures nothing reads, joins that fan out,
+          fields with no <code>#(doc)</code>, chat questions that missed) and propose edits with a receipt for
+          every claim, the way <code>eval-diagnose</code> and <code>eval-improve</code> already do for eval failures.
+        </li>
+      </ul>
+      <p>All of this sits on platform work the prototype assumes already exists. Library state lives in
+        <code>localStorage</code>
+        instead of a store the host owns, there's no signed-in identity to carry user-attribute based givens and
+        <code>#(authorize)</code>
+        through, and the Studio's schedule isn't a real job. These are some of the pieces most likely to already have
+        precedent
+        in the
+        Credible app.
+      </p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="next"><span class="num">09</span>Next steps</h2>
+      <p class="lede">The assignment was open-ended: play around with Publisher. I picked these directions by
+        following what looked interesting, without seeing the Credible app, its users, or its roadmap. As a next step
+        I'd like to
+        find out which of these ideas matter most.</p>
+
+      <ol>
+        <li><b>Get access to the Credible web app.</b> All of Part 2 was built without seeing it, and every step below
+          depends on it.</li>
+        <li><b>Audit what the platform already does.</b> Map each prototype piece against the app: content browsing,
+          chat and grounding, saved content, identity and permissions, persistence, scheduling, and theming. I'll mark
+          each
+          one as already solved, solved differently, or missing, and compare the prototype's concepts against the app's.
+        </li>
+        <li><b>Sync on the ideas.</b> Chat with the team on anything from these documents worth exploring further. The
+          ideas that change Publisher itself need the most scrutiny: Question mode, the Console Publish
+          button, the <code>app.json</code> insight primitive, and
+          the friction fixes from <a href="index.html#teardown">Part 1</a>.</li>
+        <li><b>Find the higher-priority work.</b> Customer requests, known gaps, and roadmap commitments almost
+          certainly outrank anything here. I'd be thrilled to see even just one or two of these ideas survive, folded
+          into work
+          that's already planned.</li>
+      </ol>
+
+      <h3>What's in the tree</h3>
+      <p>Nothing from either part is committed to the repo (just my fork), and it should stay that way until the
+        audit says which pieces are
+        worth developing further.</p>
+      <table>
+        <tr>
+          <th>Piece</th>
+          <th>State</th>
+        </tr>
+        <tr>
+          <td>Example packages (<code>questionable-football</code>, <code>signals-research</code>)</td>
+          <td>Complete and working. Useful as demo content regardless of what happens to the rest.</td>
+        </tr>
+        <tr>
+          <td>Question mode (<code>packages/sdk/…/Model/Question/</code>)</td>
+          <td>Working in the model explorer, with unit tests. No server change.</td>
+        </tr>
+        <tr>
+          <td>Demo workspace app (<code>packages/credible-demo</code>)</td>
+          <td>Standalone prototype, about 34k lines of TypeScript, including the analyst Worker. Publisher content is
+            read live; Library, threads and
+            comments are fixtures in <code>localStorage</code>.</td>
+        </tr>
+        <tr>
+          <td>Analyst Worker (chat and Studio generation)</td>
+          <td>Live over OpenRouter with a key, scripted without one.</td>
+        </tr>
+        <tr>
+          <td>Console Publish button and SDK <code>PublishProvider</code></td>
+          <td>Shown only when a demo workspace URL is configured.</td>
+        </tr>
+        <tr>
+          <td>Save to a package (data apps)</td>
+          <td>Phases 1–4 of <a href="../library-data-apps-plan.md">library-data-apps-plan.md</a>: manifest schema,
+            renderer, the <code>…/data-apps/{slug}</code> endpoints, and the Save menu and dialog. Phase 5 not started.
+          </td>
+        </tr>
+        <tr>
+          <td>Themes, workspaces, white-labeling</td>
+          <td>Working, stored per browser. Needs server-side workspace settings to be shareable.</td>
+        </tr>
+      </table>
+
+      <!-- <h3>Reproducing the screenshots</h3>
+      <p>Run Publisher (<code>bun run start</code>), the dev Console (<code>bun run start:dev:react</code>) and the
+        demo workspace (<code>cd packages/credible-demo &amp;&amp; bun run dev</code>, on <code>:5180</code>). Then run
+        <code>node docs/unboxing/capture-credible-demo.mjs</code> for the plain routes and
+        <code>node docs/unboxing/capture-credible-demo-flows.mjs [flow …]</code> for the interactive ones. The flows are
+        <code>library</code>, <code>chat</code>, <code>analysis</code>, <code>composer</code>, <code>menus</code>,
+        <code>themes</code>, <code>studio</code>, <code>publish</code> and <code>whitelabel</code>. Each runs in a fresh
+        browser context, so your own themes and workspaces are untouched.
+      </p> -->
+
+      <div class="series-foot">
+        <div class="label">Previously</div>
+        <a class="card" href="index.html">
+          <span class="eyebrow">← Part 1 of 2</span>
+          <span class="title">Unboxing Publisher and adding Question mode</span>
+          <span class="blurb">The two example packages this Library leverages, <code>questionable-football</code> and
+            <code>signals-research</code>, what building them taught me about Publisher, and a proposal for the Question
+            mode
+            used to publish query results from the model explorer in section 03.</span>
+        </a>
+        <div class="colophon">Publisher unboxing · Part 2 of 2 · Noah Mac · Sept 28 - Oct 1, 2026</div>
+      </div>
+    </main>
+  </div>
+</body>
+
+</html>

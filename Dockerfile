@@ -111,6 +111,7 @@ COPY scripts/add-license-headers.mjs ./scripts/
 COPY packages/server/package.json ./packages/server/package.json
 COPY packages/app/package.json ./packages/app/package.json
 COPY packages/sdk/package.json ./packages/sdk/package.json
+COPY packages/app-manifest/package.json ./packages/app-manifest/package.json
 
 # Install all workspace dependencies once (cached across builds)
 RUN --mount=type=cache,target=/root/.bun/install/cache \
@@ -128,7 +129,8 @@ COPY packages/app/ ./
 RUN --mount=type=cache,target=/root/.bun \
     NODE_OPTIONS='--max-old-space-size=4096' bun run build:server
 
-# Build server
+# Build server (its build also bundles /sdk/publisher-app.js from app-manifest)
+COPY packages/app-manifest/ /publisher/packages/app-manifest/
 WORKDIR /publisher/packages/server
 COPY packages/server/ ./
 RUN --mount=type=cache,target=/root/.bun \

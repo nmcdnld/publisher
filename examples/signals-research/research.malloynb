@@ -1,0 +1,82 @@
+>>>markdown
+# Signals research: does any signal lead?
+
+A walk through the event study in `signals.malloy`, in the order a researcher would ask the questions. Every number comes from a query below, so the notebook stays true when the data is refreshed; the prose only says what each step is asking.
+
+>>>malloy
+import "signals.malloy"
+
+>>>markdown
+## What does the universe look like right now?
+
+Thirty-three symbols, one row each for the latest session: 27 stocks across AI compute, memory, semis, software and a few outliers, and 6 benchmark funds (SPY, QQQ, IWM, SMH, DRAM and UVIX).
+
+>>>malloy
+run: sessions -> screener
+
+>>>markdown
+## How broad is the tape?
+
+Breadth over the same 33 symbols: how many are in an uptrend (close above the 50-day, 50-day above the 200-day), how many are above their 200-day, and the average RSI.
+
+>>>malloy
+run: sessions -> breadth
+
+>>>markdown
+## How have the symbols moved against each other?
+
+Each symbol's close rebased to 100 at the start of the data (or its listing day), so a $9 stock and a $1,700 one share an axis. Thirty-three lines is a tangle, so this cell draws the six benchmark funds; change the filter to read a theme.
+
+>>>malloy
+run: sessions -> relative_performance + { where: asset_class = 'ETF' }
+
+>>>markdown
+## Which signals have a record?
+
+The scorecard. Each signal's average five-session return after it fires, minus the same symbols' return over every session (the base rate), with a t-statistic and a verdict:
+
+- **Holds**: the edge points the way the signal's bias says, at |t| ≥ 2.
+- **Inverts**: the edge points the other way, as clearly.
+- **Thin**: fewer than 20 firings, too few to judge.
+- **Noise**: everything else.
+
+Twenty-one signals are tested at once, so about one should clear |t| ≥ 2 by chance alone. Read a single Holds as a lead, not a proof.
+
+>>>malloy
+run: signal_events -> scorecard
+
+>>>markdown
+## Does the answer depend on the family?
+
+The same edge rolled up to the six signal families: price, volume, options flow, dealer positioning, volatility and earnings.
+
+>>>malloy
+run: signal_events -> edge_by_family
+
+>>>markdown
+## Does the market regime change the verdict?
+
+The scorecard split by whether SPY closed above its own 200-day average on the session each signal fired. The regime is unknown until SPY has 200 sessions of history, so the earliest firings fall out of this split.
+
+>>>malloy
+run: signal_events -> scorecard_by_regime
+
+>>>markdown
+## Where did one signal work, and where did it not?
+
+The put/call spike, broken down by symbol and then by month. A record that rests on one name, or on one lucky month, is not a record.
+
+>>>malloy
+run: signal_events -> edge_by_symbol + { where: signal_id = 'put_call_spike' }
+
+>>>malloy
+# bar_chart
+run: signal_events -> edge_by_month + { where: signal_id = 'put_call_spike' }
+
+>>>markdown
+## What is firing today?
+
+Every signal that fired on the latest session. Look each one up in the scorecard above before acting on it.
+
+>>>malloy
+run: signal_events -> firing_now

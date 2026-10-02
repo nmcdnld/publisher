@@ -8,6 +8,8 @@ import {
    encodeResourceUri,
    SecondaryButton,
    useGivenUrlParams,
+   usePublish,
+   useServer,
 } from "@malloy-publisher/sdk";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { Box } from "@mui/material";
@@ -47,6 +49,26 @@ export default function DashboardPage({
       () => logDashboardEvent({ environmentName, packageName, dashboardName }),
       [environmentName, packageName, dashboardName],
    );
+   const publisher = usePublish();
+   const { apiClients } = useServer();
+   const publish = async () => {
+      // The manifest carries the dashboard's own title; a failed read still
+      // publishes, titled from the slug.
+      const manifest = await apiClients.dashboards
+         .getDashboard(environmentName, packageName, dashboardName)
+         .then((response) => response.data)
+         .catch(() => undefined);
+      publisher?.publish({
+         kind: "dashboard",
+         environmentName,
+         packageName,
+         modelPath: manifest?.path ?? `dashboards/${dashboardName}.malloy`,
+         dashboardName,
+         title: manifest?.title,
+         description: manifest?.description,
+         givens,
+      });
+   };
 
    // The builder is a lazy chunk carrying the Malloy parser, so the first Edit
    // used to sit on a spinner while it downloaded. Fetch it as soon as a
@@ -75,6 +97,13 @@ export default function DashboardPage({
          {/* The same bar the builder has, with the same button in the same
              place: Edit becomes Done and nothing else on the page moves. */}
          <DashboardBar>
+            {/* {publisher && (
+               <SecondaryButton
+                  label={publisher.label ?? "Publish"}
+                  icon={<PublishOutlinedIcon />}
+                  onClick={() => void publish()}
+               />
+            )} */}
             <SecondaryButton
                label="Edit"
                icon={<EditOutlinedIcon />}

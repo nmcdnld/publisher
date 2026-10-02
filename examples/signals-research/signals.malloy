@@ -1,0 +1,749 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// Signals research — indicators, signal events, and what happened after them.
+//
+// Two sources, at two grains:
+//
+//   sessions       one row per symbol per session: price, trailing indicators
+//                  (returns, SMAs, RSI, ATR, volume z-score, 52-week range),
+//                  the options / dealer-gamma / IV readings for that session,
+//                  a `sig_*` flag per signal, and the forward returns after it.
+//   signal_events  one row per signal firing, carrying that session's forward
+//                  returns next to the symbol's unconditional base rate, so
+//                  "did this signal beat doing nothing?" is one aggregate.
+//
+// Both are SQL sources because every indicator is a window over a symbol's
+// own history (a lag, a trailing mean, a lead), which a Malloy dimension
+// cannot express. The SQL is here, not in the extraction script, so every
+// definition a chart depends on is readable in the model it is served from.
+//
+// The rules that keep this honest, and that the SQL below is written to:
+//
+// - CAUSAL FEATURES. Every indicator on a row uses that session's close and
+//   earlier bars only. Options and IV totals settle at the close; dealer gamma
+//   is set at the open from the prior day's open interest. A signal on row t
+//   is therefore knowable at the close of t.
+// - FORWARD RETURNS ARE LABELS. `fwd_return_Nd` is close(t+N) / close(t) - 1:
+//   the outcome of acting at t's close. It is the one column that looks ahead,
+//   and nothing on a row is computed from it. The last N sessions have none.
+// - ONSETS, NOT STATES. A state signal (RSI below 30, net gamma below zero)
+//   fires on the session it BECOMES true, not on every session it stays true,
+//   which would count one oversold spell as ten events.
+// - BASE RATES PER SYMBOL. A signal's edge is measured against the average
+//   forward return of the same symbols over every session, weighted by where
+//   the signal actually fired, so a signal that only fires on a stock that
+//   rose all year does not get credit for the stock.
+//
+// RSI is Cutler's (simple 14-session averages of gains and losses), not
+// Wilder's smoothed version, so it reads a few points off a charting platform
+// on the same bar. The 50- and 200-day SMAs match Folio's screener exactly.
+
+import "market.malloy"
+
+#(doc) One row per symbol per trading session: OHLCV, trailing indicators, options flow, dealer gamma and implied volatility for that session, a flag per research signal, and the forward returns that followed
+source: sessions is duckdb.sql("""
+WITH bars AS (
+  SELECT
+    b.*,
+    lag(close) OVER w AS prev_close,
+    close - lag(close) OVER w AS chg,
+    greatest(high - low, abs(high - lag(close) OVER w), abs(low - lag(close) OVER w)) AS true_range,
+    count(*) OVER w AS bar_number
+  FROM 'data/daily_bars.parquet' b
+  WINDOW w AS (PARTITION BY symbol ORDER BY session_date)
+),
+flow AS (
+  SELECT
+    symbol, session_date,
+    put_volume / nullif(call_volume, 0) AS put_call_ratio,
+    net_call_premium - net_put_premium AS net_premium,
+    (bullish_premium - bearish_premium) / nullif(bullish_premium + bearish_premium, 0) AS bull_bear_skew,
+    call_volume_ask_side / nullif(call_volume_ask_side + call_volume_bid_side, 0) AS call_ask_share,
+    call_volume + put_volume AS options_volume
+  FROM 'data/options_flow.parquet'
+),
+flow_z AS (
+  SELECT
+    *,
+    (put_call_ratio - avg(put_call_ratio) OVER p20) / nullif(stddev_samp(put_call_ratio) OVER p20, 0) AS put_call_z20,
+    (net_premium - avg(net_premium) OVER p20) / nullif(stddev_samp(net_premium) OVER p20, 0) AS net_premium_z20
+  FROM flow
+  WINDOW p20 AS (PARTITION BY symbol ORDER BY session_date ROWS BETWEEN 20 PRECEDING AND 1 PRECEDING)
+),
+greeks AS (
+  SELECT
+    symbol, session_date,
+    call_gamma + put_gamma AS net_gamma,
+    call_vanna + put_vanna AS net_vanna
+  FROM 'data/greek_exposure.parquet'
+),
+vol AS (
+  SELECT
+    *,
+    iv_30d - rv_21d AS iv_rv_spread,
+    iv_30d - lag(iv_30d, 5) OVER (PARTITION BY symbol ORDER BY session_date) AS iv_change_5d
+  FROM 'data/volatility.parquet'
+),
+reactions AS (
+  -- The session that first trades on a report: its own date for a premarket
+  -- report, the next session otherwise. Bounded to five days so a report from
+  -- before the bar window cannot land on the window's first session.
+  SELECT
+    e.symbol,
+    min(b.session_date) AS session_date,
+    any_value(e.surprise_pct) AS surprise_pct
+  FROM 'data/earnings.parquet' e
+  JOIN bars b
+    ON b.symbol = e.symbol
+   AND (b.session_date > e.report_date OR (e.is_premarket AND b.session_date = e.report_date))
+   AND b.session_date <= e.report_date + INTERVAL 5 DAY
+  WHERE NOT e.is_upcoming AND e.surprise_pct IS NOT NULL
+  GROUP BY e.symbol, e.report_date
+),
+features AS (
+  SELECT
+    b.symbol || ':' || CAST(b.session_date AS VARCHAR) AS session_id,
+    b.symbol, b.session_date, b.open, b.high, b.low, b.close, b.volume, b.prev_close,
+    b.session_date = max(b.session_date) OVER (PARTITION BY b.symbol) AS is_latest_session,
+    100 * b.close / first_value(b.close) OVER w AS performance_index,
+    count(*) OVER (PARTITION BY b.symbol ORDER BY b.session_date ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS sessions_ago,
+    b.close / b.prev_close - 1 AS return_1d,
+    b.close / lag(b.close, 5) OVER w - 1 AS return_5d,
+    b.close / lag(b.close, 20) OVER w - 1 AS return_20d,
+    b.close / lag(b.close, 63) OVER w - 1 AS return_63d,
+    b.close / lag(b.close, 252) OVER w - 1 AS return_252d,
+    b.close / first_value(b.prev_close) OVER (PARTITION BY b.symbol, year(b.session_date) ORDER BY b.session_date) - 1 AS return_ytd,
+    b.open / b.prev_close - 1 AS gap_pct,
+    CASE WHEN b.bar_number >= 20 THEN avg(b.close) OVER (w ROWS 19 PRECEDING) END AS sma_20,
+    CASE WHEN b.bar_number >= 50 THEN avg(b.close) OVER (w ROWS 49 PRECEDING) END AS sma_50,
+    CASE WHEN b.bar_number >= 200 THEN avg(b.close) OVER (w ROWS 199 PRECEDING) END AS sma_200,
+    CASE WHEN b.bar_number >= 15 THEN
+      100 - 100 / (1 + avg(greatest(b.chg, 0)) OVER (w ROWS 13 PRECEDING)
+                     / nullif(avg(greatest(-b.chg, 0)) OVER (w ROWS 13 PRECEDING), 0))
+    END AS rsi_14,
+    CASE WHEN b.bar_number >= 15 THEN avg(b.true_range) OVER (w ROWS 13 PRECEDING) / b.close END AS atr_pct_14,
+    b.volume / nullif(avg(b.volume) OVER (w ROWS BETWEEN 20 PRECEDING AND 1 PRECEDING), 0) AS relative_volume,
+    (b.volume - avg(b.volume) OVER (w ROWS BETWEEN 20 PRECEDING AND 1 PRECEDING))
+      / nullif(stddev_samp(b.volume) OVER (w ROWS BETWEEN 20 PRECEDING AND 1 PRECEDING), 0) AS volume_z20,
+    max(b.high) OVER (w ROWS BETWEEN 20 PRECEDING AND 1 PRECEDING) AS prior_high_20,
+    min(b.low) OVER (w ROWS BETWEEN 20 PRECEDING AND 1 PRECEDING) AS prior_low_20,
+    max(b.high) OVER (w ROWS 251 PRECEDING) AS high_52w,
+    min(b.low) OVER (w ROWS 251 PRECEDING) AS low_52w,
+    lead(b.close, 1) OVER w / b.close - 1 AS fwd_return_1d,
+    lead(b.close, 5) OVER w / b.close - 1 AS fwd_return_5d,
+    lead(b.close, 20) OVER w / b.close - 1 AS fwd_return_20d,
+    f.put_call_ratio, f.net_premium, f.bull_bear_skew, f.call_ask_share, f.options_volume,
+    f.put_call_z20, f.net_premium_z20,
+    g.net_gamma, g.net_vanna,
+    v.iv_rank, v.iv_30d, v.rv_21d, v.iv_rv_spread, v.iv_change_5d,
+    r.surprise_pct AS reaction_surprise_pct
+  FROM bars b
+  LEFT JOIN flow_z f USING (symbol, session_date)
+  LEFT JOIN greeks g USING (symbol, session_date)
+  LEFT JOIN vol v USING (symbol, session_date)
+  LEFT JOIN reactions r USING (symbol, session_date)
+  WINDOW w AS (PARTITION BY b.symbol ORDER BY b.session_date)
+),
+prior AS (
+  SELECT
+    *,
+    lag(rsi_14) OVER w AS prev_rsi_14,
+    lag(sma_50) OVER w AS prev_sma_50,
+    lag(sma_200) OVER w AS prev_sma_200,
+    lag(net_gamma) OVER w AS prev_net_gamma,
+    lag(close > prior_high_20) OVER w AS prev_above_high_20,
+    lag(close < prior_low_20) OVER w AS prev_below_low_20,
+    lag(put_call_z20) OVER w AS prev_put_call_z20,
+    lag(net_premium_z20) OVER w AS prev_net_premium_z20,
+    lag(iv_change_5d) OVER w AS prev_iv_change_5d
+  FROM features
+  WINDOW w AS (PARTITION BY symbol ORDER BY session_date)
+)
+SELECT
+  p.* EXCLUDE (prev_rsi_14, prev_sma_50, prev_sma_200, prev_net_gamma, prev_above_high_20,
+               prev_below_low_20, prev_put_call_z20, prev_net_premium_z20, prev_iv_change_5d),
+  spy.close > spy.sma_200 AS spy_above_sma_200,
+  -- One flag per row of data/signal_catalog.csv, named sig_<signal_id>.
+  coalesce(p.rsi_14 <= 30 AND p.prev_rsi_14 > 30, false) AS sig_rsi_oversold,
+  coalesce(p.rsi_14 >= 70 AND p.prev_rsi_14 < 70, false) AS sig_rsi_overbought,
+  coalesce(p.close > p.prior_high_20 AND NOT p.prev_above_high_20, false) AS sig_breakout_20d,
+  coalesce(p.close < p.prior_low_20 AND NOT p.prev_below_low_20, false) AS sig_breakdown_20d,
+  coalesce(p.close > p.sma_50 AND p.prev_close <= p.prev_sma_50, false) AS sig_reclaim_sma50,
+  coalesce(p.close < p.sma_50 AND p.prev_close >= p.prev_sma_50, false) AS sig_lose_sma50,
+  coalesce(p.sma_50 > p.sma_200 AND p.prev_sma_50 <= p.prev_sma_200, false) AS sig_golden_cross,
+  coalesce(p.sma_50 < p.sma_200 AND p.prev_sma_50 >= p.prev_sma_200, false) AS sig_death_cross,
+  coalesce(p.gap_pct >= 0.03, false) AS sig_gap_up,
+  coalesce(p.gap_pct <= -0.03, false) AS sig_gap_down,
+  coalesce(p.volume_z20 >= 2 AND p.return_1d > 0, false) AS sig_volume_thrust_up,
+  coalesce(p.volume_z20 >= 2 AND p.return_1d < 0, false) AS sig_volume_thrust_down,
+  coalesce(p.put_call_z20 >= 2 AND p.prev_put_call_z20 < 2, false) AS sig_put_call_spike,
+  coalesce(p.net_premium_z20 >= 2 AND p.prev_net_premium_z20 < 2, false) AS sig_bullish_premium_surge,
+  coalesce(p.net_premium_z20 <= -2 AND p.prev_net_premium_z20 > -2, false) AS sig_bearish_premium_surge,
+  coalesce(p.net_gamma < 0 AND p.prev_net_gamma >= 0, false) AS sig_gamma_turns_negative,
+  coalesce(p.net_gamma >= 0 AND p.prev_net_gamma < 0, false) AS sig_gamma_turns_positive,
+  coalesce(p.iv_change_5d >= 0.05 AND p.prev_iv_change_5d < 0.05, false) AS sig_iv_spike,
+  coalesce(p.iv_change_5d <= -0.05 AND p.prev_iv_change_5d > -0.05, false) AS sig_iv_crush,
+  coalesce(p.reaction_surprise_pct > 0, false) AS sig_earnings_beat,
+  coalesce(p.reaction_surprise_pct < 0, false) AS sig_earnings_miss
+FROM prior p
+LEFT JOIN features spy ON spy.symbol = 'SPY' AND spy.session_date = p.session_date
+""") extend {
+  primary_key: session_id
+  join_one: securities with symbol
+
+  dimension:
+    #(doc) Company or ETF name
+    # label="Name"
+    name is securities.name
+    #(doc) Sector for a stock; Fund for an ETF
+    # label="Sector"
+    sector is securities.sector
+    #(doc) This package's grouping of the symbol: AI compute, Memory, Semis, AI infrastructure, Mega-cap, Software, Bitcoin, Space, Health tech, Gaming, or Index and Volatility for the benchmark funds
+    # label="Theme"
+    theme is securities.theme
+    #(doc) Equity for a stock, ETF for a benchmark fund
+    # label="Asset class"
+    asset_class is securities.asset_class
+    #(doc) Calendar month of the session
+    # label="Month"
+    session_month is session_date.month
+    #(doc) Uptrend when close is above a rising stack (close > SMA 50 > SMA 200), Downtrend for the mirror image, Mixed otherwise
+    # label="Trend"
+    trend is
+      pick 'Uptrend' when close > sma_50 and sma_50 > sma_200
+      pick 'Downtrend' when close < sma_50 and sma_50 < sma_200
+      pick 'Mixed' when sma_200 is not null
+      else null
+    #(doc) Oversold at RSI 30 or below, Overbought at 70 or above, Neutral between
+    # label="RSI zone"
+    rsi_zone is
+      pick 'Oversold' when rsi_14 <= 30
+      pick 'Overbought' when rsi_14 >= 70
+      pick 'Neutral' when rsi_14 is not null
+      else null
+    #(doc) Whether the S&P 500 (SPY) closed above its own 200-day SMA that session: the broad-market regime a signal fired in
+    # label="Market regime"
+    market_regime is
+      pick 'SPY above 200-day' when spy_above_sma_200
+      pick 'SPY below 200-day' when spy_above_sma_200 is not null and not spy_above_sma_200
+      else null
+    #(doc) Long gamma when net dealer gamma is at or above zero, Short gamma below it. Null before a symbol's gamma history starts
+    # label="Gamma regime"
+    gamma_regime is
+      pick 'Long gamma' when net_gamma >= 0
+      pick 'Short gamma' when net_gamma < 0
+      else null
+    #(doc) Where the close sits in its trailing 52-week high-low range: 0 at the low, 1 at the high
+    # percent
+    # label="52w range"
+    range_position_52w is (close - low_52w) / nullif(high_52w - low_52w, 0)
+    #(doc) Close relative to its 50-day SMA
+    # percent
+    # label="vs SMA 50"
+    vs_sma_50 is close / nullif(sma_50, 0) - 1
+    #(doc) Close relative to its 200-day SMA
+    # percent
+    # label="vs SMA 200"
+    vs_sma_200 is close / nullif(sma_200, 0) - 1
+
+  measure:
+    #(doc) Sessions counted
+    # label="Sessions"
+    session_count is count()
+    #(doc) Average one-session return
+    # percent
+    # label="Avg daily return"
+    avg_return_1d is return_1d.avg()
+    #(doc) Annualized volatility of daily returns (population standard deviation times the square root of 252)
+    # percent
+    # label="Realized vol"
+    realized_vol is sqrt(avg(return_1d * return_1d) - return_1d.avg() * return_1d.avg()) * sqrt(252)
+    #(doc) Share of sessions that closed up
+    # percent
+    # label="Up days"
+    up_day_rate is count() { where: return_1d > 0 } / nullif(count() { where: return_1d is not null }, 0)
+    #(doc) Average return over the five sessions after a session: the base rate a signal has to beat
+    # percent
+    # label="Avg fwd 5d"
+    avg_fwd_return_5d is fwd_return_5d.avg()
+    #(doc) Signal firings across all research signals
+    # label="Signals fired"
+    signals_fired is count() {
+      where: sig_rsi_oversold or sig_rsi_overbought or sig_breakout_20d or sig_breakdown_20d
+        or sig_reclaim_sma50 or sig_lose_sma50 or sig_golden_cross or sig_death_cross
+        or sig_gap_up or sig_gap_down or sig_volume_thrust_up or sig_volume_thrust_down
+        or sig_put_call_spike or sig_bullish_premium_surge or sig_bearish_premium_surge
+        or sig_gamma_turns_negative or sig_gamma_turns_positive or sig_iv_spike or sig_iv_crush
+        or sig_earnings_beat or sig_earnings_miss
+    }
+
+  // ── Views ───────────────────────────────────────────────────────────
+  #(doc) The latest session for every symbol: price, performance across horizons, trend and momentum readings, and options positioning. The screener
+  view: screener is {
+    where: is_latest_session
+    group_by:
+      # label="Symbol"
+      symbol
+      name
+      sector
+      theme
+      asset_class
+      # label="Session"
+      session_date
+      # currency
+      # label="Last"
+      close
+      # percent
+      # label="1D"
+      return_1d
+      # percent
+      # label="1W"
+      return_5d
+      # percent
+      # label="1M"
+      return_20d
+      # percent
+      # label="3M"
+      return_63d
+      # percent
+      # label="YTD"
+      return_ytd
+      # percent
+      # label="1Y"
+      return_252d
+      # number="#,##0.0"
+      # label="RSI"
+      rsi_14
+      rsi_zone
+      trend
+      vs_sma_50
+      vs_sma_200
+      range_position_52w
+      # percent
+      # label="ATR %"
+      atr_pct_14
+      # number="#,##0.00"
+      # label="Rel vol"
+      relative_volume
+      # number="#,##0.00"
+      # label="Put/call"
+      put_call_ratio
+      gamma_regime
+      # percent
+      # label="IV rank"
+      iv_rank
+      # percent
+      # label="IV − RV"
+      iv_rv_spread
+    order_by: symbol
+  }
+  #(doc) Daily closes with 20-, 50- and 200-day SMAs, one row per session. Filter to one symbol
+  view: price_history is {
+    select:
+      session_date
+      # currency
+      # label="Open"
+      open
+      # currency
+      # label="High"
+      high
+      # currency
+      # label="Low"
+      low
+      # currency
+      # label="Close"
+      close
+      # number="#,##0"
+      # label="Volume"
+      volume
+      # currency
+      # label="SMA 20"
+      sma_20
+      # currency
+      # label="SMA 50"
+      sma_50
+      # currency
+      # label="SMA 200"
+      sma_200
+      # number="#,##0.0"
+      # label="RSI"
+      rsi_14
+    order_by: session_date
+  }
+  #(doc) Options and dealer positioning per session: put/call, net premium, net gamma, implied and realized volatility. Filter to one symbol
+  view: positioning_history is {
+    where: net_gamma is not null or put_call_ratio is not null
+    select:
+      session_date
+      # number="#,##0.00"
+      # label="Put/call"
+      put_call_ratio
+      # currency
+      # label="Net premium"
+      net_premium
+      # number="#,##0"
+      # label="Net gamma"
+      net_gamma
+      # percent
+      # label="IV rank"
+      iv_rank
+      # percent
+      # label="IV 30d"
+      iv_30d
+      # percent
+      # label="RV 21d"
+      rv_21d
+    order_by: session_date
+  }
+  // Rebased, not raw closes: SNDK near 1,700 and BFLY near 9 on one axis is the
+  // shared-scale trap, where the big number flattens everything else.
+  // Weekly, not daily: 33 symbols over two years of sessions is ~15,000
+  // points, past the 1,000 rows a query returns by default, which would cut
+  // every line off partway with no error. Weekly is ~3,400; filter to a few
+  // symbols to read it.
+  #(doc) Each symbol's close rebased to 100 at its first session in the data (2024-09-30, or its listing day for a newer symbol), averaged by week, one line per symbol: relative performance on one scale
+  # line_chart
+  view: relative_performance is {
+    group_by:
+      # label="Week"
+      session_week is session_date.week
+      # label="Symbol"
+      symbol
+    aggregate:
+      # number="#,##0.0"
+      # label="Index (start = 100)"
+      performance is performance_index.avg()
+    order_by: session_week
+    limit: 5000
+  }
+  // 33 symbols × 63 sessions is past the 1,000-row default, which would
+  // silently drop every symbol after the first sixteen alphabetically.
+  #(doc) The last 63 sessions (about three months) of closes per symbol, oldest first, for sparklines
+  view: recent_closes is {
+    where: sessions_ago < 63
+    select: symbol, session_date, close, sessions_ago
+    order_by: symbol, session_date
+    limit: 5000
+  }
+  #(doc) How many symbols sit in each trend state on their latest session, and how far they are from their 200-day
+  view: breadth is {
+    where: is_latest_session
+    aggregate:
+      # percent
+      # label="In uptrend"
+      uptrend_share is count() { where: trend = 'Uptrend' } / nullif(count(), 0)
+      # percent
+      # label="Above 200-day"
+      above_200d_share is count() { where: close > sma_200 } / nullif(count(), 0)
+      # number="#,##0.0"
+      # label="Avg RSI"
+      avg_rsi is rsi_14.avg()
+      # label="Symbols"
+      symbol_count is count()
+  }
+  #(doc) Realized volatility and up-day share by symbol over the sessions selected
+  # bar_chart
+  view: volatility_by_symbol is {
+    group_by: symbol
+    aggregate: realized_vol
+    order_by: realized_vol desc
+  }
+  #(doc) Sessions by trend state and RSI zone, across the symbols selected
+  view: regime_mix is {
+    where: trend is not null
+    group_by: trend, rsi_zone
+    aggregate: session_count, avg_fwd_return_5d
+    order_by: trend, rsi_zone
+  }
+}
+
+#(doc) One row per research signal firing: which signal, on which symbol and session, the forward returns after it, and the symbol's unconditional base rate for the same horizons. The event study
+source: signal_events is duckdb.sql("""
+WITH s AS (SELECT * FROM %{ sessions -> { select: * } }),
+base AS (
+  SELECT
+    symbol,
+    avg(fwd_return_1d) AS base_1d,
+    avg(fwd_return_5d) AS base_5d,
+    avg(fwd_return_20d) AS base_20d,
+    avg(CASE WHEN fwd_return_5d IS NOT NULL THEN (fwd_return_5d > 0)::INT END) AS base_up_5d,
+    avg(CASE WHEN fwd_return_20d IS NOT NULL THEN (fwd_return_20d > 0)::INT END) AS base_up_20d
+  FROM s
+  GROUP BY symbol
+),
+events AS (
+  UNPIVOT (SELECT session_id, symbol, session_date, close, rsi_14, gap_pct, put_call_ratio, net_gamma,
+                  iv_rank, spy_above_sma_200, is_latest_session, fwd_return_1d, fwd_return_5d,
+                  fwd_return_20d, COLUMNS('^sig_') FROM s)
+  ON COLUMNS('^sig_')
+  INTO NAME signal_column VALUE fired
+)
+SELECT
+  e.session_id || ':' || substr(e.signal_column, 5) AS event_id,
+  substr(e.signal_column, 5) AS signal_id,
+  e.* EXCLUDE (signal_column, fired),
+  -- The base rate counts only where the event has an outcome to compare, so
+  -- a signal on one of the last N sessions adds to neither side.
+  CASE WHEN e.fwd_return_1d IS NOT NULL THEN b.base_1d END AS base_return_1d,
+  CASE WHEN e.fwd_return_5d IS NOT NULL THEN b.base_5d END AS base_return_5d,
+  CASE WHEN e.fwd_return_20d IS NOT NULL THEN b.base_20d END AS base_return_20d,
+  CASE WHEN e.fwd_return_5d IS NOT NULL THEN b.base_up_5d END AS base_up_5d,
+  CASE WHEN e.fwd_return_20d IS NOT NULL THEN b.base_up_20d END AS base_up_20d,
+  e.fwd_return_1d - b.base_1d AS excess_return_1d,
+  e.fwd_return_5d - b.base_5d AS excess_return_5d,
+  e.fwd_return_20d - b.base_20d AS excess_return_20d
+FROM events e
+JOIN base b USING (symbol)
+WHERE e.fired
+""") extend {
+  primary_key: event_id
+  join_one:
+    #(doc) The signal's definition, family and expected direction
+    signal_catalog with signal_id
+    #(doc) The security the signal fired on
+    securities with symbol
+
+  dimension:
+    #(doc) The signal's display name
+    # label="Signal"
+    signal is signal_catalog.signal
+    #(doc) Price, Volume, Options flow, Positioning, Volatility or Earnings
+    # label="Family"
+    family is signal_catalog.family
+    #(doc) Momentum, Trend, Mean reversion, Contrarian, Volatility regime or Drift: the theory the signal's classic reading rests on
+    # label="Style"
+    style is signal_catalog.style
+    #(doc) The direction the signal's classic reading expects: Bullish or Bearish
+    # label="Bias"
+    bias is signal_catalog.bias
+    #(doc) The signal's rule in plain English
+    # label="Definition"
+    definition is signal_catalog.definition
+    #(doc) Company or ETF name
+    # label="Name"
+    name is securities.name
+    #(doc) Equity for a stock, ETF for a benchmark fund
+    # label="Asset class"
+    asset_class is securities.asset_class
+    #(doc) This package's grouping of the symbol, as on sessions
+    # label="Theme"
+    theme is securities.theme
+    #(doc) Whether SPY closed above its 200-day SMA on the session the signal fired
+    # label="Market regime"
+    market_regime is
+      pick 'SPY above 200-day' when spy_above_sma_200
+      pick 'SPY below 200-day' when spy_above_sma_200 is not null and not spy_above_sma_200
+      else null
+    #(doc) The five-session forward return in 2-point buckets, clamped to ±20%, for a distribution chart
+    # label="Fwd 5d bucket"
+    fwd_5d_bucket is
+      pick -20 when fwd_return_5d * 100 < -20
+      pick 20 when fwd_return_5d * 100 >= 20
+      else floor(fwd_return_5d * 100 / 2) * 2
+    #(doc) Calendar month the signal fired in
+    # label="Month"
+    event_month is session_date.month
+
+  measure:
+    #(doc) Times the signal fired
+    # label="Events"
+    event_count is count()
+    #(doc) Distinct symbols the signal fired on
+    # label="Symbols"
+    symbol_count is count(symbol)
+    #(doc) Average return over the session after the signal
+    # percent
+    # label="Avg fwd 1d"
+    avg_fwd_1d is fwd_return_1d.avg()
+    #(doc) Average return over the five sessions after the signal
+    # percent
+    # label="Avg fwd 5d"
+    avg_fwd_5d is fwd_return_5d.avg()
+    #(doc) Average return over the twenty sessions after the signal
+    # percent
+    # label="Avg fwd 20d"
+    avg_fwd_20d is fwd_return_20d.avg()
+    #(doc) Base-rate five-session return for the same symbols, weighted by where the signal fired
+    # percent
+    # label="Base 5d"
+    base_fwd_5d is base_return_5d.avg()
+    #(doc) Base-rate twenty-session return for the same symbols
+    # percent
+    # label="Base 20d"
+    base_fwd_20d is base_return_20d.avg()
+    #(doc) Average one-session return above the symbols' base rate
+    # percent
+    # label="Edge 1d"
+    edge_1d is excess_return_1d.avg()
+    #(doc) Average five-session return above the symbols' base rate: what the signal added over holding every session
+    # percent
+    # label="Edge 5d"
+    edge_5d is excess_return_5d.avg()
+    #(doc) Average twenty-session return above the symbols' base rate
+    # percent
+    # label="Edge 20d"
+    edge_20d is excess_return_20d.avg()
+    #(doc) Share of events followed by a higher close five sessions later
+    # percent
+    # label="Hit 5d"
+    hit_rate_5d is count() { where: fwd_return_5d > 0 } / nullif(count() { where: fwd_return_5d is not null }, 0)
+    #(doc) Share of all sessions, for the same symbols, followed by a higher close five sessions later
+    # percent
+    # label="Base hit 5d"
+    base_hit_rate_5d is base_up_5d.avg()
+    #(doc) Share of events followed by a higher close twenty sessions later
+    # percent
+    # label="Hit 20d"
+    hit_rate_20d is count() { where: fwd_return_20d > 0 } / nullif(count() { where: fwd_return_20d is not null }, 0)
+    #(doc) Edge 5d over its standard error. Around 2 or more is unlikely to be noise, but overlapping five-day windows overstate it, so read it as a ranking, not a p-value
+    # number="#,##0.0"
+    # label="t 5d"
+    edge_t_5d is excess_return_5d.avg()
+      / nullif(sqrt((avg(excess_return_5d * excess_return_5d) - excess_return_5d.avg() * excess_return_5d.avg())
+                    / nullif(count() { where: excess_return_5d is not null } - 1, 0)), 0)
+    #(doc) Edge 20d over its standard error, with the same overlap caveat as t 5d
+    # number="#,##0.0"
+    # label="t 20d"
+    edge_t_20d is excess_return_20d.avg()
+      / nullif(sqrt((avg(excess_return_20d * excess_return_20d) - excess_return_20d.avg() * excess_return_20d.avg())
+                    / nullif(count() { where: excess_return_20d is not null } - 1, 0)), 0)
+    // Edge is signed by the market, not by the signal: a Bearish signal whose
+    // events went on to RISE has a positive edge_5d and failed. This one is
+    // signed by the signal's own bias, so positive always means "the classic
+    // reading held".
+    #(doc) Five-session edge signed by the signal's bias: positive when the move went the way the signal's classic reading expects
+    # percent
+    # label="Bias edge 5d"
+    bias_edge_5d is source.avg(signal_catalog.bias_sign * excess_return_5d)
+    #(doc) Holds when the five-session move went the signal's way with |t| of 2 or more, Inverts when it went the other way as clearly, Thin under 20 events, Noise otherwise
+    # label="Verdict 5d"
+    verdict_5d is
+      pick 'Thin' when count() { where: fwd_return_5d is not null } < 20
+      pick 'Holds' when bias_edge_5d > 0 and abs(edge_t_5d) >= 2
+      pick 'Inverts' when bias_edge_5d < 0 and abs(edge_t_5d) >= 2
+      else 'Noise'
+
+  // ── Views ───────────────────────────────────────────────────────────
+  #(doc) Every signal ranked by five-session edge over the base rate, with hit rates, the 1- and 20-session edges and a t-statistic. The signal scorecard
+  view: scorecard is {
+    group_by: signal_id, signal, family, style, bias
+    aggregate:
+      verdict_5d
+      event_count
+      symbol_count
+      bias_edge_5d
+      hit_rate_5d
+      base_hit_rate_5d
+      avg_fwd_5d
+      base_fwd_5d
+      edge_1d
+      edge_5d
+      edge_t_5d
+      edge_20d
+      edge_t_20d
+    order_by: edge_5d desc
+  }
+  #(doc) Five-session edge by signal family
+  # bar_chart
+  view: edge_by_family is {
+    group_by: family
+    aggregate: edge_5d, event_count
+    order_by: edge_5d desc
+  }
+  #(doc) The same scorecard split by whether SPY was above its 200-day SMA when the signal fired
+  view: scorecard_by_regime is {
+    where: market_regime is not null
+    group_by: signal, market_regime
+    aggregate: event_count, hit_rate_5d, edge_5d, edge_20d
+    order_by: signal, market_regime
+  }
+  #(doc) Edge by symbol: where a signal worked and where it did not
+  view: edge_by_symbol is {
+    group_by:
+      # label="Symbol"
+      symbol
+      name
+    aggregate: event_count, hit_rate_5d, edge_5d, edge_20d
+    order_by: event_count desc
+  }
+  #(doc) Distribution of five-session forward returns after the signal, in 2-point buckets
+  # bar_chart
+  view: fwd_5d_distribution is {
+    where: fwd_return_5d is not null
+    group_by: fwd_5d_bucket
+    aggregate: event_count
+    order_by: fwd_5d_bucket
+  }
+  #(doc) Events per month with their average five-session edge: whether a signal's record is steady or one lucky month
+  view: edge_by_month is {
+    group_by: event_month
+    aggregate: event_count, edge_5d
+    order_by: event_month
+  }
+  #(doc) Every firing, newest first, with the forward returns that followed
+  view: event_log is {
+    group_by:
+      # label="Session"
+      session_date
+      # label="Symbol"
+      symbol
+      signal
+      bias
+      # currency
+      # label="Close"
+      close
+      # percent
+      # label="Fwd 1d"
+      fwd_return_1d
+      # percent
+      # label="Fwd 5d"
+      fwd_return_5d
+      # percent
+      # label="Fwd 20d"
+      fwd_return_20d
+      # percent
+      # label="Excess 5d"
+      excess_return_5d
+    order_by: session_date desc
+    limit: 250
+  }
+  #(doc) The signals that fired on each symbol's latest session
+  view: firing_now is {
+    where: is_latest_session
+    group_by:
+      # label="Symbol"
+      symbol
+      signal_id
+      signal
+      bias
+      family
+    order_by: symbol
+  }
+  #(doc) One line of headline figures for whatever population the source is filtered to: the verdict, its sample, and the edge against base at each horizon
+  view: summary is {
+    aggregate:
+      verdict_5d, event_count, symbol_count, bias_edge_5d, hit_rate_5d, base_hit_rate_5d,
+      avg_fwd_5d, base_fwd_5d, edge_1d, edge_5d, edge_t_5d, edge_20d, edge_t_20d
+  }
+}
+
+#(doc) Every signal's catalog entry, for a definition card. From the catalog rather than the events, so a signal that never fired in a population still has its definition
+query: signal_definitions is signal_catalog -> {
+  group_by: signal_id, signal, family, style, bias, bias_sign, definition
+  order_by: family, signal
+}
+
+// A picker that offers the signals gets them from a query like this one, in
+// the catalog's order rather than alphabetically.
+#(doc) Signal ids and names, for the Signal control's option list
+query: signal_suggest is signal_catalog -> {
+  group_by: signal_id, signal, family
+  order_by: family, signal
+}
+
+#(doc) Distinct symbols with their names, for the Symbol control's option list
+query: symbol_suggest is securities -> {
+  group_by: symbol, name, asset_class, theme
+  order_by: asset_class desc, theme, symbol
+}

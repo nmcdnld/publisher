@@ -52,6 +52,17 @@ export default ({ mode }) => {
                     target: "http://localhost:4000",
                     changeOrigin: true,
                  },
+                 // In-package data apps are served off the server root, not
+                 // under /api/v0. Without these, the data app iframe gets this
+                 // SPA's index.html instead of the app.
+                 "^/environments/[^/]+/packages/": {
+                    target: "http://localhost:4000",
+                    changeOrigin: true,
+                 },
+                 "^/sdk/publisher(-app)?\\.js$": {
+                    target: "http://localhost:4000",
+                    changeOrigin: true,
+                 },
               },
            }
          : {},

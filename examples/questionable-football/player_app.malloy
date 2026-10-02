@@ -1,0 +1,55 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// The sources public/player.html queries: everything about ONE player.
+//
+// The player is a given, not text pasted into a query, so whatever a reader
+// puts in the URL (`?player=…`) is bound by the server as a typed string and
+// compared, never parsed as Malloy. An id the data does not have returns
+// empty tiles rather than an error, which the page says in words.
+//
+// Givens are per file, and the server refuses a given the model does not
+// declare, so this file declares only the two the player page sends.
+##! experimental.givens
+// Both files: an import is not transitive, and `roster` is declared in
+// football.malloy.
+import "football.malloy"
+import "fantasy.malloy"
+
+# description="The player's play-by-play id (Pro Football Reference style, e.g. HurtJa00)"
+# label="Player"
+given: PLAYER :: string is 'HurtJa00'
+
+# description="The season the game log and game-flow chart show"
+# label="Season"
+given: SEASON :: number is 2025
+
+#(doc) The chosen player's roster record: name, position and team
+source: player_profile is roster extend {
+  where: player_id = $PLAYER
+}
+
+#(doc) The chosen player's seasons, 2023-2025: the career table and the season picker
+source: player_career is player_seasons extend {
+  where: player_id = $PLAYER
+}
+
+#(doc) The chosen player's games in the chosen season: the game log and the weekly bars
+source: player_log is player_games extend {
+  where: player_id = $PLAYER and season = $SEASON
+}
+
+#(doc) Every scoring event the chosen player had in the chosen season: the game-flow chart and the scoring-play list
+source: player_flow is fantasy_events extend {
+  where: player_id = $PLAYER and season = $SEASON
+}
+
+#(doc) The chosen player's 2026 draft market, matched through his 2025 season, so a player who did not score in 2025 has no market row here
+source: player_market is draft_board extend {
+  where: last_season.player_id = $PLAYER
+}
+
+#(doc) The chosen player's 2025 preseason price beside how he finished
+source: player_price_2025 is adp_2025 extend {
+  where: finish.player_id = $PLAYER
+}

@@ -48,8 +48,9 @@
       "bake-duckdb-extensions": "bun scripts/bake-duckdb-extensions.js",
       "start": "NODE_ENV=production bun run ./dist/server.mjs",
       "start:init": "NODE_ENV=production bun run ./dist/server.mjs --init",
-      "start:dev": "NODE_ENV=development bun --watch src/server.ts",
-      "start:dev:init": "NODE_ENV=development bun --watch src/server.ts --init",
+      "start:dev": "bun run build:app-runtime && NODE_ENV=development bun --watch src/server.ts",
+      "start:dev:init": "bun run build:app-runtime && NODE_ENV=development bun --watch src/server.ts --init",
+      "build:app-runtime": "cd ../credible-demo && bun run build:standalone",
       "start:instrumented": "bun --preload ./dist/instrumentation.mjs ./dist/server.mjs",
       "lint": "bunx eslint \"./src/**/*.ts\"",
       "format": "bunx prettier --write '**/*.{ts,tsx}'",
@@ -63,6 +64,7 @@
       "@duckdb/node-api": "1.5.5-r.4",
       "@google-cloud/bigquery": "^7.9.4",
       "@google-cloud/storage": "^7.16.0",
+      "@malloy-publisher/app-manifest": "workspace:*",
       "@malloydata/db-bigquery": "^0.0.432",
       "@malloydata/db-databricks": "^0.0.432",
       "@malloydata/db-duckdb": "^0.0.432",
@@ -101,7 +103,8 @@
       "recursive-readdir": "^2.2.3",
       "simple-git": "^3.28.0",
       "uuid": "^11.0.3",
-      "winston": "^3.17.0"
+      "winston": "^3.17.0",
+      "zod": "^3.25.76"
    },
    "devDependencies": {
       "@eslint/compat": "^1.2.7",

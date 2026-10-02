@@ -1,0 +1,5 @@
+{
+  "name": "signals-research",
+  "version": "1.0.0",
+  "description": "Market signals research over 27 AI-era stocks and 6 benchmark ETFs: daily bars, options flow, dealer gamma and implied volatility, with an event study of 21 trading signals against each symbol's base rate. Local DuckDB data, with a screener, a ticker terminal and a signal lab as HTML data apps."
+}

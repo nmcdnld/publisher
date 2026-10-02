@@ -22,6 +22,7 @@ import { fileURLToPath } from "url";
 import { CompileController } from "./controller/compile.controller";
 import { ConnectionController } from "./controller/connection.controller";
 import { DashboardController } from "./controller/dashboard.controller";
+import { DataAppController } from "./controller/data_app.controller";
 import { DatabaseController } from "./controller/database.controller";
 import { ModelController } from "./controller/model.controller";
 import { PackageController } from "./controller/package.controller";
@@ -358,6 +359,7 @@ memoryGovernor?.start();
 environmentStore.setMemoryGovernor(memoryGovernor);
 const packageController = new PackageController(environmentStore);
 const dashboardController = new DashboardController(environmentStore);
+const dataAppController = new DataAppController(environmentStore);
 const databaseController = new DatabaseController(environmentStore);
 const queryController = new QueryController(environmentStore);
 const compileController = new CompileController(environmentStore);
@@ -522,6 +524,27 @@ app.get("/sdk/publisher.js", (_req, res) => {
          logger.error("Failed to send publisher.js runtime", { error: err });
          if (!res.headersSent) res.status(500).end();
       }
+   });
+});
+
+// The renderer a manifest-backed data app (`public/apps/<slug>/`) loads beside
+// publisher.js. Unlike publisher.js it is built, from packages/credible-demo,
+// by the server build and by `start:dev`; the checkout does not carry it.
+const PUBLISHER_APP_RUNTIME_PATH = path.join(
+   path.dirname(__filename_esm),
+   "runtime",
+   "publisher-app.js",
+);
+app.get("/sdk/publisher-app.js", (_req, res) => {
+   res.type("application/javascript");
+   res.setHeader("cache-control", "public, max-age=60");
+   res.setHeader("X-Content-Type-Options", "nosniff");
+   res.sendFile(PUBLISHER_APP_RUNTIME_PATH, (err) => {
+      if (!err || res.headersSent) return;
+      logger.error("Failed to send publisher-app.js", { error: err });
+      res.status(404).send(
+         "console.error('publisher-app.js is not built: run `bun run build:standalone` in packages/credible-demo');\n",
+      );
    });
 });
 
@@ -948,6 +971,72 @@ app.get(
       }
    },
 );
+
+const DATA_APP_ROUTE = `${API_PREFIX}/environments/:environmentName/packages/:packageName/data-apps/:slug`;
+
+/** A refused write is the endpoint working; only a 5xx is worth an error. */
+function sendDataAppError(
+   req: express.Request,
+   res: express.Response,
+   action: string,
+   error: unknown,
+) {
+   const { json, status } = internalErrorToHttpError(error as Error);
+   const detail = {
+      environmentName: req.params.environmentName,
+      packageName: req.params.packageName,
+      slug: req.params.slug,
+      status,
+      error,
+   };
+   if (status >= 500) logger.error(`Data app ${action} failed`, detail);
+   else logger.warn(`Data app ${action} refused`, detail);
+   res.status(status).json(json);
+}
+
+app.get(DATA_APP_ROUTE, async (req, res) => {
+   try {
+      res.status(200).json(
+         await dataAppController.getDataApp(
+            req.params.environmentName,
+            req.params.packageName,
+            req.params.slug,
+         ),
+      );
+   } catch (error) {
+      sendDataAppError(req, res, "read", error);
+   }
+});
+
+// Gated like the dashboard write: it compiles every query in the manifest.
+app.put(DATA_APP_ROUTE, queryConcurrency(), async (req, res) => {
+   try {
+      const result = await dataAppController.putDataApp(
+         req.params.environmentName,
+         req.params.packageName,
+         req.params.slug,
+         req.body,
+      );
+      res.status(result.created ? 201 : 200).json(result);
+   } catch (error) {
+      sendDataAppError(req, res, "write", error);
+   }
+});
+
+app.delete(DATA_APP_ROUTE, async (req, res) => {
+   try {
+      const expectedHash = req.query.expectedHash;
+      await dataAppController.deleteDataApp(
+         req.params.environmentName,
+         req.params.packageName,
+         req.params.slug,
+         typeof expectedHash === "string" ? expectedHash : undefined,
+      );
+      res.status(204).end();
+   } catch (error) {
+      sendDataAppError(req, res, "delete", error);
+   }
+});
 
 app.get(`${API_PREFIX}/status`, async (_req, res) => {
    try {

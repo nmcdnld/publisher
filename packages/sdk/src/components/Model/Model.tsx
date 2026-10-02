@@ -32,6 +32,26 @@ export interface ModelProps {
       givens: Record<string, string>,
       managed: readonly string[],
    ) => void;
+   /**
+    * A Malloy query (`run: source -> …`) to open the explorer on, with its
+    * source selected and Run ready. Shown in the builder when it can express
+    * the query, and as Malloy text otherwise.
+    */
+   query?: string;
+}
+
+/** Where `run: <source> -> …` names its source in the model, or 0. */
+function sourceIndexOf(sourceInfos: string[] | undefined, query: string) {
+   const name = query.match(/^\s*run\s*:\s*([A-Za-z_]\w*)/)?.[1];
+   if (!name) return 0;
+   const index = (sourceInfos ?? []).findIndex((info) => {
+      try {
+         return JSON.parse(info)?.name === name;
+      } catch {
+         return false;
+      }
+   });
+   return index < 0 ? 0 : index;
 }
 
 // Note: For this to properly render outside of publisher,
@@ -45,6 +65,7 @@ export default function Model({
    maxResultSize = 0,
    givens,
    onGivensChange,
+   query,
 }: ModelProps) {
    const { modelPath } = parseResourceUri(resourceUri);
    const { data, isError, isLoading, error } = useModelData(resourceUri);
@@ -53,6 +74,14 @@ export default function Model({
       QueryExplorerResult | undefined
    >();
    const [sharedSourceIndex, setSharedSourceIndex] = React.useState(0);
+   // Seeded during render, not in an effect, so the explorer's first render
+   // already has the query's source: switching source afterwards clears it.
+   const [seededQuery, setSeededQuery] = React.useState<string>();
+   if (data && query && query !== seededQuery) {
+      setSeededQuery(query);
+      setSharedQuery({ query, malloyQuery: query, malloyResult: undefined });
+      setSharedSourceIndex(sourceIndexOf(data.sourceInfos, query));
+   }
    const [copyMessage, setCopyMessage] = useState("");
    // Held here only when the host passes neither prop, so the embedded
    // explorer and the maximized dialog still agree on one set of values
@@ -115,7 +144,6 @@ export default function Model({
          <Box
             sx={{
                position: "relative",
-               maxWidth: "1200px",
                margin: "0 auto",
                paddingTop: "24px",
             }}

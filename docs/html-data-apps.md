@@ -264,6 +264,54 @@ events routes themselves are open; treat anything you put under `public/` as
 world-readable to anyone who can reach the server, and keep secrets in the models
 and the database, behind the query API, not in the page.
 
+### Theme
+
+The runtime tells a page which appearance to draw in, by attributes on `<html>`:
+
+| Attribute | Value |
+|---|---|
+| `data-theme` | `light` or `dark` |
+| `data-theme-source` | `host` when a host page sent its theme; absent otherwise |
+| `--publisher-<token>` | one CSS custom property per token the host sent |
+
+Standalone, `data-theme` follows the reader's OS setting and changes with it.
+Inside a host that sends its theme, the page follows the host instead: the
+Publisher Console's data app viewer sends its light/dark mode and palette, and a
+workspace host sends its light/dark switch and workspace theme. The tokens a host
+may send are `background`, `foreground`, `card`, `muted`, `muted-foreground`,
+`border`, `ring`, `primary`, `primary-foreground`, `accent`, `accent-foreground`,
+`positive`, `negative`, `chart-1` to `chart-5`, and `font-sans`; any may be
+missing, so read each with a fallback to your own value.
+
+The pattern that works is three token blocks at the top of the stylesheet: your
+light palette on `:root`, your dark one on `:root[data-theme="dark"]`, and a
+mapping onto the host's on `:root[data-theme-source="host"]`. Map your chrome
+(surfaces, text, borders, accent, lead series) onto the host, and keep the colours
+that carry meaning in your data, like a team's colour, as your own:
+
+```css
+:root[data-theme-source="host"] {
+  --bg: var(--publisher-background, var(--own-bg));
+  --panel: var(--publisher-card, var(--own-panel));
+  --text: var(--publisher-foreground, var(--own-text));
+  --accent: var(--publisher-primary, var(--own-accent));
+}
+```
+
+Set `<meta name="color-scheme" content="light dark">` so form controls and
+scrollbars follow too. A page that paints from script (a canvas chart) reads the
+current theme from `Publisher.theme` (`{ mode, tokens, source }`) and repaints on
+the `publisher:theme` window event, which fires whenever the appearance changes.
+The `questionable-football` and `signals-research` example packages do both.
+
+A host that is not a Publisher component can send a theme itself. The page asks
+with a `{ type: "publisher:theme-request" }` message when it loads; answer, and
+again on every change, with
+`{ type: "publisher:theme", mode: "light" | "dark", tokens: { … } }` posted to
+the iframe's window. The SDK's `useDataAppThemeBridge(iframeRef, theme)` does
+this for a React host, and `DataAppViewer` takes the same value as its `theme`
+prop.
+
 ## Embedding
 
 A page can be embedded in another page as an auto-resizing iframe with
@@ -360,6 +408,60 @@ without it keep content-height sizing, so marking one app full-screen does not
 affect any other page, and opening a page directly at
 `/environments/<env>/packages/<pkg>/<file>` is unaffected either way.
 
+## Manifest-backed apps: a saved finding
+
+Not every data app is hand-written. A finding saved from an analysis (a headline, the supporting
+points, a chart, and the queries behind them) is stored as a data app whose page is generic and
+whose content is data. It is a directory under `public/apps/`:
+
+```
+public/apps/revenue-growth-by-year/
+├── app.json     # the manifest: title, prose, queries, a snapshot of their rows
+└── index.html   # generated; the same few lines for every app
+```
+
+The page carries `<meta name="publisher:app" content="app.json">` and loads two scripts,
+`/sdk/publisher.js` and `/sdk/publisher-app.js`. The second one is the renderer: it fetches the
+manifest named by the meta tag, runs each of its queries through `Publisher.query`, and draws the
+finding. Treat `index.html` as generated output: edit `app.json`, not the page. The page's body
+holds the title and description as plain text, so it still says what it is if the renderer never
+runs.
+
+**Live numbers, pinned prose.** Charts and tables are drawn from the query results, so they move
+with the data. The headline and bullet points are the text as written, against the data as of
+`snapshot.asOf`, and the footer says so. The manifest also stores a snapshot of every query's rows
+(at most 400 per query). The renderer draws the snapshot instead, and names why, when a query fails
+(the model changed, the source was renamed, the caller lacks a given), when it no longer returns a
+column the finding was written against, or when it returns no rows where the snapshot has some:
+"Showing the rows as of Sep 30, 2026: a query could not be shown live (…)". A finding keeps its
+evidence after the model moves on, and it is clear about which state you are looking at.
+
+**Saving one.** `PUT /api/v0/environments/<env>/packages/<pkg>/data-apps/<slug>` with
+`{"manifest": {…}}` writes `public/apps/<slug>/app.json` and generates its `index.html`. Publisher
+validates the manifest and compiles every one of its queries against that package first, and
+refuses the save, writing nothing, when one does not compile there. That check is what keeps a
+finding in the package its data came from: its model paths are package-relative, so saved anywhere
+else they would name models that are not there, or models of the same name that mean something
+else. Omit `expectedHash` to create an app; to replace one, send the `contentHash` that
+`GET …/data-apps/<slug>` returned, and a 409 means someone changed it since. `DELETE
+…/data-apps/<slug>?expectedHash=…` removes it. An agent or a person can equally write the two files
+by hand; the endpoint is the checked way.
+
+The manifest's `kind` is `analysis` (one headline, its details, one evidence chart) or `report`
+(a sequence of blocks: KPIs, charts, tables, insights, a summary). The renderer is built from the
+Credible destination's own components, so a finding draws exactly as it did where it was saved:
+its evidence `visual` (contribution, anomaly, divergence, waterfall), a `chartjs` or `tanstack`
+chart program, and a report's blocks all render as written, in the light or dark mode and host
+palette that `publisher.js` reports. A manifest the renderer cannot read (an unknown `version` or
+`kind`, or no queries) renders a short notice saying why, rather than a blank page.
+
+These apps are ordinary data apps in every other respect. They appear in the
+[listing](#listing-a-packages-data-apps), open in the Console's viewer, embed with
+`Publisher.embed`, and query through the same governed endpoint as a hand-written page. For a
+headless check, wait for `#publisher-app[data-state="ready"]` and `[data-chart="drawn"]`, not
+`networkidle` (see [Live reload](#live-reload)). The bundled example is
+`http://localhost:4000/environments/examples/packages/storefront/apps/revenue-growth-by-year/`.
+
 ## Listing a package's data apps
 
 `GET /api/v0/environments/<env>/packages/<pkg>/data-apps` returns the package's
@@ -424,8 +526,10 @@ Endpoints used by an HTML data app:
 |---|---|
 | `GET /environments/<env>/packages/<pkg>/<file>` | Serve a file from `public/` |
 | `GET /sdk/publisher.js` | The page runtime |
+| `GET /sdk/publisher-app.js` | The renderer for [manifest-backed apps](#manifest-backed-apps-a-saved-finding) |
 | `POST /api/v0/environments/<env>/packages/<pkg>/models/<model>/query` | Run a query (used by `Publisher.query`) |
 | `GET /api/v0/environments/<env>/packages/<pkg>/data-apps` | List the package's data apps |
+| `GET`, `PUT`, `DELETE /api/v0/environments/<env>/packages/<pkg>/data-apps/<slug>` | Read, save, or remove a [manifest-backed app](#manifest-backed-apps-a-saved-finding) |
 | `GET /api/v0/environments/<env>/packages/<pkg>/events` | Live-reload stream |
 
 See also:

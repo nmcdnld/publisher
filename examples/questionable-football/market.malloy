@@ -1,0 +1,275 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// The 2026 betting market — what the lines say about the season to come.
+//
+//   schedule_2026        one row per 2026 regular-season game, with the
+//                        spread, total, moneylines and the scores they imply
+//   team_schedule_2026   one row per TEAM per game: the same lines from each
+//                        side, so a team's slate is a plain group_by
+//   futures_2026         one row per team: win total and playoff, division,
+//                        conference and Super Bowl odds, vig removed
+//   team_outlook         futures_2026 beside what the posted lines imply and
+//                        what the team actually did in 2025
+//
+// Lines are posted a few weeks ahead, so most games after week 7 have none
+// (`has_lines` is false). Every rate below is computed over the games that do,
+// and says so; nothing is filled in for a game with no line.
+
+import "football.malloy"
+
+#(doc) DraftKings 2026 futures, one row per team: win total and the vig-removed probabilities of making the playoffs and winning the division, the conference and the Super Bowl
+source: futures_2026 is duckdb.table('data/futures_2026.parquet') extend {
+  primary_key: team
+  join_one: teams with team
+}
+
+#(doc) The 2026 regular season, one row per game: week, date, kickoff, home and away team, roof, and where posted the home spread, total, moneylines, the implied score for each side and each side's win probability with the vig removed
+source: schedule_2026 is duckdb.table('data/schedule_2026.parquet') extend {
+  primary_key: game_id
+  join_one: home is teams on home_team = home.team
+  join_one: away is teams on away_team = away.team
+
+  dimension:
+    #(doc) "DAL @ PHI", or "DAL vs. PHI" at a neutral site
+    # label="Matchup"
+    matchup is pick concat(away_team, ' vs. ', home_team) when is_neutral else concat(away_team, ' @ ', home_team)
+    #(doc) The team favoured by the spread
+    # label="Favorite"
+    favorite is
+      pick home_team when home_spread < 0
+      pick away_team when home_spread > 0
+      else null
+
+  measure:
+    #(doc) Games on the slate
+    # label="Games"
+    game_count is count()
+    #(doc) Games with a posted line
+    # label="Lined games"
+    lined_games is count() { where: has_lines }
+    #(doc) Average posted total (over/under)
+    # number="0.0"
+    # label="Avg total"
+    avg_total_line is total_line.avg()
+
+  #(doc) The posted slate: every game with a line, its spread, total and implied scores
+  view: posted_lines is {
+    group_by:
+      # number=id
+      # label="Wk"
+      game_week
+      game_date
+      matchup
+      favorite
+      # number="+0.0;-0.0"
+      # label="Home spread"
+      home_spread
+      # number="0.0"
+      # label="Total"
+      total_line
+      # number="0.0"
+      # label="Away pts"
+      implied_away_score
+      # number="0.0"
+      # label="Home pts"
+      implied_home_score
+      # percent
+      # label="Home win"
+      home_win_prob
+    where: has_lines
+    order_by: game_week, game_date
+  }
+
+  #(doc) The highest posted totals: the games the market expects to be shootouts
+  view: shootouts is {
+    top: 12
+    group_by: game_week, matchup, total_line, implied_away_score, implied_home_score
+    where: has_lines
+    order_by: total_line desc
+  }
+}
+
+#(doc) One row per team per 2026 game: opponent, home or away, and from that team's side the spread, implied points for and against, and win probability where a line is posted
+source: team_schedule_2026 is duckdb.sql("""
+  SELECT game_id || ':' || home_team AS team_game_id, game_id, game_week, game_date, home_team AS team, away_team AS opponent, true AS is_home, is_neutral, roof,
+         has_lines, home_spread AS spread, total_line, implied_home_score AS implied_points_for,
+         implied_away_score AS implied_points_against, home_win_prob AS win_prob
+  FROM 'data/schedule_2026.parquet'
+  UNION ALL
+  SELECT game_id || ':' || away_team, game_id, game_week, game_date, away_team, home_team, false, is_neutral, roof,
+         has_lines, -home_spread, total_line, implied_away_score, implied_home_score, away_win_prob
+  FROM 'data/schedule_2026.parquet'
+""") extend {
+  primary_key: team_game_id
+  join_one: teams with team
+  join_one: opponent_team is teams on opponent = opponent_team.team
+  join_one: opponent_futures is futures_2026 on opponent = opponent_futures.team
+
+  dimension:
+    #(doc) "vs DAL" at home, "@ DAL" away
+    # label="Opponent"
+    matchup is pick concat('vs ', opponent) when is_home else concat('@ ', opponent)
+    #(doc) Implied points for minus against: the spread from this team's side, sign flipped
+    # number="+0.0;-0.0"
+    # label="Implied margin"
+    implied_margin is implied_points_for - implied_points_against
+
+  measure:
+    #(doc) Games on the slate
+    # label="Games"
+    game_count is count()
+    #(doc) Games with a posted line
+    # label="Lined games"
+    lined_games is count() { where: has_lines }
+    #(doc) Sum of win probabilities over the posted games: wins the lines expect from them
+    # number="0.0"
+    # label="Expected wins (posted)"
+    expected_wins_posted is win_prob.sum()
+    #(doc) Average win probability over the posted games
+    # percent
+    # label="Implied win rate"
+    implied_win_rate is win_prob.avg()
+    #(doc) Average implied points for over the posted games
+    # number="0.0"
+    # label="Implied PPG"
+    implied_points_for_per_game is implied_points_for.avg()
+    #(doc) Average implied points against over the posted games
+    # number="0.0"
+    # label="Implied PPG allowed"
+    implied_points_against_per_game is implied_points_against.avg()
+    #(doc) Average futures win total of the opponents on the slate: schedule strength as the market sees it
+    # number="0.0"
+    # label="Opp win total"
+    opponent_win_total is opponent_futures.win_total.avg()
+
+  #(doc) Every team-game on the slate, for the schedule grid: week, opponent and win probability
+  view: slate is {
+    group_by:
+      team
+      # number=id
+      # label="Wk"
+      game_week
+      opponent
+      is_home
+      matchup
+      has_lines
+      # percent
+      # label="Win prob"
+      win_prob
+      # number="+0.0;-0.0"
+      # label="Spread"
+      spread
+      # number="0.0"
+      # label="Implied pts"
+      implied_points_for
+    order_by: team, game_week
+  }
+
+  #(doc) Schedule strength: the average 2026 win total of every opponent on each team's slate, toughest first
+  # bar_chart
+  view: strength_of_schedule is {
+    group_by: team
+    aggregate: opponent_win_total
+    order_by: opponent_win_total desc
+  }
+}
+
+#(doc) Each team's 2026 outlook: the futures market beside what the posted game lines imply (wins over 17 games, points for and against) and what the team scored and allowed in 2025
+source: team_outlook is futures_2026 extend {
+  join_many: slate is team_schedule_2026 on team = slate.team
+  join_many: results_2025 is team_games on team = results_2025.team and results_2025.season = 2025 and results_2025.game_type = 'REG'
+
+  dimension:
+    #(doc) Conference and division: "NFC East"
+    # label="Division"
+    division_label is teams.conference_division
+
+  measure:
+    #(doc) Implied win rate over the posted lines, extended to 17 games
+    # number="0.0"
+    # label="Line-implied wins"
+    line_implied_wins is slate.win_prob.avg() { where: slate.has_lines } * 17
+    #(doc) Line-implied wins minus the win total: positive means the early lines are kinder than the season market
+    # number="+0.0;-0.0"
+    # label="Lines vs total"
+    lines_vs_total is line_implied_wins - win_total.max()
+    #(doc) Average implied points per game over the posted lines
+    # number="0.0"
+    # label="Implied PPG"
+    implied_ppg is slate.implied_points_for.avg() { where: slate.has_lines }
+    #(doc) Average implied points allowed per game over the posted lines
+    # number="0.0"
+    # label="Implied PPG allowed"
+    implied_ppg_allowed is slate.implied_points_against.avg() { where: slate.has_lines }
+    #(doc) Points per game the team scored in the 2025 regular season
+    # number="0.0"
+    # label="2025 PPG"
+    ppg_2025 is results_2025.points_for.avg()
+    #(doc) Implied 2026 points per game minus 2025 actual: the market's read of how the offence changed
+    # number="+0.0;-0.0"
+    # label="PPG change"
+    ppg_change is implied_ppg - ppg_2025
+    #(doc) 2025 regular-season wins
+    # label="2025 W"
+    wins_2025 is results_2025.wins
+    #(doc) Games with a posted line
+    # label="Lined games"
+    posted_games is slate.lined_games
+    #(doc) Average 2026 win total of the team's opponents
+    # number="0.0"
+    # label="Opp win total"
+    schedule_strength is slate.opponent_win_total
+
+  #(doc) The league board: every team's win total, line-implied wins, playoff and title odds, implied scoring against 2025, and schedule strength
+  view: league_board is {
+    group_by:
+      team
+      teams.full_name
+      teams.conference
+      teams.division
+      # number="0.0"
+      # label="Win total"
+      win_total
+      # percent
+      # label="Playoffs"
+      playoff_prob
+      # percent
+      # label="Division"
+      division_prob
+      # percent
+      # label="Super Bowl"
+      super_bowl_prob
+    aggregate: line_implied_wins, lines_vs_total, implied_ppg, ppg_2025, ppg_change, wins_2025, schedule_strength, posted_games
+    order_by: win_total desc
+  }
+
+  #(doc) Each division's teams by win total, with playoff odds
+  view: by_division is {
+    group_by: division_label
+    nest: teams_in_division is {
+      group_by:
+        team
+        # number="0.0"
+        # label="Win total"
+        win_total
+        # percent
+        # label="Playoffs"
+        playoff_prob
+      order_by: win_total desc
+    }
+    order_by: division_label
+  }
+
+  #(doc) Super Bowl odds, the 12 favourites
+  # bar_chart
+  view: title_odds is {
+    top: 12
+    group_by: team
+    aggregate:
+      # percent
+      # label="Super Bowl"
+      title_prob is super_bowl_prob.max()
+    order_by: title_prob desc
+  }
+}

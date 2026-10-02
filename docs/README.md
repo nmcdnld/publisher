@@ -83,6 +83,7 @@ there for the primitive, then follow the application you need.
 | [../SECURITY.md](../SECURITY.md)                               | Report a security vulnerability, or check what's in scope.                                                                                                                                              |
 | [malloyyo-dashboards-design.md](malloyyo-dashboards-design.md) | _Design doc:_ the grammar and architecture behind native `dashboards/*.malloy` support.                                                                                                                 |
 | [dashboard-builder-plan.md](dashboard-builder-plan.md)         | _Plan:_ the dashboard builder and the Malloyyo-style notebook — research, gaps against the state of the art, how the builder is built, the notebook format and its builder, and the steps for each gap. |
+| [library-data-apps-plan.md](library-data-apps-plan.md)         | _Plan:_ saving destination Library content into a package as a manifest-backed data app (`public/apps/<slug>/`) that the Console and the destination both open — the convention, the write endpoint, and the phases that fold Save and Promote into one verb. |
 
 ## Full public docs
 

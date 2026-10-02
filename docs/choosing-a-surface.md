@@ -176,6 +176,15 @@ filter wiring, and error handling. Guide:
 pixel-controlled, or interactive beyond what renderer tags express. If a designer has opinions
 about it, it's an HTML data app.
 
+**A saved finding** is the case in between: an answer someone already reached (a headline, a few
+supporting points, one chart) that should be kept, shared, and reopened. Nobody writes a page for
+it. The finding is stored as a manifest under `public/apps/<slug>/`, and a renderer Publisher serves
+draws it, so it is an HTML data app with no code of its own. Its charts rerun live, its prose stays
+as written, and when a query no longer runs it shows the rows it was saved with. Reach for a
+notebook instead when the story needs more than one finding, and for a dashboard when people will
+come back to it to watch the numbers move. See
+[html-data-apps.md](html-data-apps.md#manifest-backed-apps-a-saved-finding).
+
 ## Decision guide
 
 1. **Is there a narrative?** Prose between the numbers, an order the reader should follow →

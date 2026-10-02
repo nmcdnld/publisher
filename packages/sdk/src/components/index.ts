@@ -28,6 +28,7 @@ export * from "./Materializations";
 export * from "./Model";
 export * from "./Notebook";
 export * from "./Package";
+export * from "./Publish";
 export {
    Prose,
    type ProseLinkContext,

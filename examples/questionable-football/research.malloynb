@@ -1,0 +1,82 @@
+>>>markdown
+# Questionable Football: who to draft in 2026, and why
+
+A walk from last season's scoring to next season's draft board, in the order a fantasy manager would ask the questions. Every number comes from a query below, so the notebook stays true when the data is rebuilt; the prose only says what each step is asking. Scoring is half-PPR over weeks 1-17, worked out from the play-by-play rather than taken from a provider.
+
+>>>malloy
+import "fantasy.malloy"
+import "market.malloy"
+
+>>>markdown
+## Who scored in 2025?
+
+The 2025 leaderboard, top 25. Each row is one player-season: total points, points per game, where the points came from, and the finish overall and at the position.
+
+>>>malloy
+run: player_seasons -> leaderboard + { where: season = 2025; limit: 25 }
+
+>>>markdown
+## Where do the points come from at each position?
+
+Passing, rushing, receiving and kicking points by position across all three seasons, with the share that came from touchdowns. The touchdown share is the most volatile part of a season, so a position that leans on it is harder to project.
+
+>>>malloy
+run: fantasy_events -> scoring_mix
+
+>>>markdown
+## How steep is the drop at each position?
+
+The average season of a top-6 finisher, a 7th-12th and a 13th-24th, over 2023-2025. A steep drop means waiting costs more; a flat one means the position can wait. This is the query behind the saved finding *The tight end cliff*.
+
+>>>malloy
+run: player_seasons -> position_cliff
+
+>>>markdown
+## Did the 2025 draft market price players well?
+
+Each 2025 pick against where the player finished at their position. A hit is a finish at or above the drafted position rank; a player who never scored is a miss. The early rounds are where the misses were most expensive. This is the query behind the saved finding *Late picks beat their price*.
+
+>>>malloy
+run: adp_2025 -> hit_rate_by_phase
+
+>>>markdown
+The same picks by position and phase, to see which positions the early-round misses came from.
+
+>>>malloy
+run: adp_2025 -> hit_rate_by_round
+
+>>>markdown
+The largest misses of 2025: picks that finished furthest below their price.
+
+>>>malloy
+run: adp_2025 -> biggest_misses
+
+>>>markdown
+## Who does the 2026 market undervalue?
+
+Players whose projected rank at their position is better than the rank the market drafts them at, with value over replacement: projected points above the last starter at the position in a 12-team league (QB12, RB30, WR36, TE12).
+
+>>>malloy
+run: draft_board -> market_steals
+
+>>>markdown
+And the other side: players the market drafts ahead of their projection.
+
+>>>malloy
+run: draft_board -> overpriced
+
+>>>markdown
+## Which teams does Vegas like?
+
+The 2026 futures board: win totals, the wins implied by the posted game lines, and the 2025 record they are measured against. A team whose line-implied wins sit well above its win total is one the weekly markets like more than the season market does.
+
+>>>malloy
+run: team_outlook -> league_board
+
+>>>markdown
+## Which 2026 games should score the most?
+
+The posted games with the highest over/under, where the players on both sides have the most room to score.
+
+>>>malloy
+run: schedule_2026 -> shootouts

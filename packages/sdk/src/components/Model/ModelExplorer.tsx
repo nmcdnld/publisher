@@ -1,7 +1,7 @@
 // Copyright (c) Credible Data Inc.
 // SPDX-License-Identifier: MIT
 
-import { Box, Stack } from "@mui/material";
+import { Box, Stack, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import React, { useMemo } from "react";
@@ -14,8 +14,25 @@ import { givensToRequest } from "../given/paramCodec";
 import { Loading } from "../Loading";
 import { StyledCard, StyledCardContent, StyledCardMedia } from "../styles";
 import { runGate } from "./runGate";
-import { QueryExplorerResult, SourcesExplorer } from "./SourcesExplorer";
+import {
+   type ExplorerMode,
+   type QuestionContext,
+   QueryExplorerResult,
+   SourcesExplorer,
+} from "./SourcesExplorer";
 import { useModelData } from "./useModelData";
+
+const MODE_STORAGE_KEY = "publisher.explorer.mode";
+
+function storedMode(): ExplorerMode {
+   try {
+      return window.localStorage.getItem(MODE_STORAGE_KEY) === "question"
+         ? "question"
+         : "fields";
+   } catch {
+      return "fields";
+   }
+}
 
 // Add a styled component for the multi-row tab bar
 // const MultiRowTabBar = styled(Box)(({ theme }) => ({
@@ -148,6 +165,37 @@ export function ModelExplorer({
       () => runGate(specs, controls.applied),
       [specs, controls.applied],
    );
+   const [mode, setMode] = React.useState<ExplorerMode>(storedMode);
+   const changeMode = (next: ExplorerMode) => {
+      setMode(next);
+      try {
+         window.localStorage.setItem(MODE_STORAGE_KEY, next);
+      } catch {
+         // Storage can be unavailable; the choice then lasts for the page.
+      }
+   };
+   const question = useMemo<QuestionContext>(
+      () => ({
+         givens: specs,
+         controls: controls.panel,
+         applied: controls.applied,
+         sourceText: effectiveData?.sourceText,
+      }),
+      [specs, controls.panel, controls.applied, effectiveData?.sourceText],
+   );
+   // Parsed once per model, so each source keeps one identity across renders.
+   const sourceAndPaths = useMemo(
+      () =>
+         (effectiveData?.sourceInfos ?? []).map((source) => ({
+            sourceInfo: JSON.parse(source),
+            modelPath: modelPath,
+         })),
+      [effectiveData?.sourceInfos, modelPath],
+   );
+   const selectSource = (idx: number) => {
+      setSelectedTab(idx);
+      onSourceChange?.(idx);
+   };
 
    if (isLoading && !data) {
       return <Loading text="Fetching Model..." />;
@@ -181,7 +229,7 @@ export function ModelExplorer({
 
    return (
       <StyledCard variant="outlined">
-         <StyledCardContent>
+         <StyledCardContent sx={{ flexGrow: 0 }}>
             <Stack
                sx={{
                   flexDirection: "row",
@@ -225,10 +273,7 @@ export function ModelExplorer({
                      if (!newValue) return;
 
                      const idx = sourceOptions.indexOf(newValue);
-                     if (idx >= 0) {
-                        setSelectedTab(idx);
-                        onSourceChange?.(idx);
-                     }
+                     if (idx >= 0) selectSource(idx);
                   }}
                   renderInput={(params) => <TextField {...params} />}
                   style={{
@@ -238,32 +283,64 @@ export function ModelExplorer({
                      marginBottom: "8px",
                   }}
                />
+               <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  // Beside the picker, not pushed right: hosts float their own
+                  // icons in the card's top-right corner.
+                  sx={{ ml: 2, mb: 1 }}
+               >
+                  <ToggleButtonGroup
+                     size="small"
+                     exclusive
+                     value={mode}
+                     onChange={(_event, next: ExplorerMode | null) =>
+                        next && changeMode(next)
+                     }
+                     aria-label="Explorer mode"
+                  >
+                     <ToggleButton
+                        value="fields"
+                        sx={{ textTransform: "none" }}
+                     >
+                        Fields
+                     </ToggleButton>
+                     <ToggleButton
+                        value="question"
+                        sx={{ textTransform: "none" }}
+                     >
+                        Question
+                     </ToggleButton>
+                  </ToggleButtonGroup>
+               </Stack>
             </Stack>
          </StyledCardContent>
-         <GivensPanel {...controls.panel} />
+         {/* Question mode shows each parameter beside the field it filters. */}
+         {mode === "fields" && <GivensPanel {...controls.panel} />}
          <StyledCardMedia>
-            <Stack spacing={2} component="section">
+            <Stack
+               spacing={2}
+               component="section"
+               sx={{
+                  mt: mode === "question" ? "calc(6 * var(--mui-spacing))" : 0,
+               }}
+            >
                {/* Render the selected source info */}
-               {Array.isArray(effectiveData.sourceInfos) &&
-                  effectiveData.sourceInfos.length > 0 && (
-                     <SourcesExplorer
-                        sourceAndPaths={effectiveData.sourceInfos.map(
-                           (source) => {
-                              const sourceInfo = JSON.parse(source);
-                              return {
-                                 sourceInfo: sourceInfo,
-                                 modelPath: modelPath,
-                              };
-                           },
-                        )}
-                        selectedSourceIndex={selectedTab}
-                        existingQuery={existingQuery}
-                        onQueryChange={onChange}
-                        resourceUri={resourceUri}
-                        givens={requestGivens}
-                        gate={gate}
-                     />
-                  )}
+               {sourceAndPaths.length > 0 && (
+                  <SourcesExplorer
+                     sourceAndPaths={sourceAndPaths}
+                     selectedSourceIndex={selectedTab}
+                     onSelectSource={selectSource}
+                     existingQuery={existingQuery}
+                     onQueryChange={onChange}
+                     resourceUri={resourceUri}
+                     givens={requestGivens}
+                     gate={gate}
+                     mode={mode}
+                     question={question}
+                  />
+               )}
 
                <Box height="5px" />
             </Stack>

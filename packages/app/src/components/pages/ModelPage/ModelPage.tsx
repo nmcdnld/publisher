@@ -14,6 +14,7 @@ import {
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
+import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { MONO_FONT_FAMILY } from "../../../theme/colors";
 import DashboardPage from "../DashboardPage/DashboardPage";
@@ -29,7 +30,12 @@ function ModelPage() {
    const navigate = useRouterClickHandler();
    // Parameter values ride in the query string, so a Model's Run is a
    // shareable link, the same as a dashboard's or a notebook's.
-   const { params: givens, onGivensChange } = useGivenUrlParams();
+   const { params: urlParams, onGivensChange } = useGivenUrlParams();
+   // `?query=` opens the explorer on that Malloy; it is not a given.
+   const [openQuery, givens] = useMemo(() => {
+      const { query, ...rest } = urlParams;
+      return [query, rest] as const;
+   }, [urlParams]);
    if (!params.environmentName) {
       return (
          <div>
@@ -151,6 +157,7 @@ function ModelPage() {
                maxResultSize={512 * 1024}
                givens={givens}
                onGivensChange={onGivensChange}
+               query={openQuery}
             />
          </Box>
       );

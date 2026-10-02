@@ -1,0 +1,801 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// Fantasy football — half-PPR scoring from the play-by-play, and the draft
+// market priced against it.
+//
+//   fantasy_events     one row per player per play they scored on. The
+//                      SCORING RULES are the dimensions below, so changing a
+//                      rule (full PPR, 6-point passing TDs) is a one-line edit
+//   player_games       one row per player per game: a fantasy box score
+//   player_seasons     one row per player per season, with finish ranks
+//   draft_board        the 2026 draft market (ADP and projections) beside the
+//                      same player's 2025 finish
+//   adp_2025           the 2025 market beside how each pick actually finished
+//
+// Which player a play belongs to is the one step not done here: it is a fuzzy
+// match of names in the play description, done once by
+// scripts/build-data.mjs. A play can belong to two players (the passer and the
+// receiver), which is why there is one event per player rather than per play.
+//
+// Scoring is half-PPR as the Questionable Football site counts it: 1 point per
+// 25 passing yards, 4 per passing TD, -2 per interception; 1 per 10 rushing or
+// receiving yards, 6 per rushing or receiving TD, 0.5 per reception; 3 per
+// field goal and 1 per extra point made. Fumbles, two-point conversions, return
+// touchdowns and distance bonuses for kicks are not counted: the descriptions
+// do not carry them reliably.
+
+import "football.malloy"
+
+#(doc) One row per player per play they earned fantasy points on, 2023-2025 weeks 1-17: the play, the player and their team that season, their role (passing, receiving, rushing, field_goal, extra_point), yards, and the half-PPR points each scoring rule awards
+source: fantasy_events is duckdb.table('data/fantasy_events.parquet') extend {
+  join_one: games with game_id
+  join_one: teams with team
+  join_one: roster with player_id
+
+  dimension:
+    // ── The scoring rules ─────────────────────────────────────────────────
+    #(doc) Half-PPR passing points: 1 per 25 yards, 4 per touchdown, -2 per interception
+    # number="0.0"
+    # label="Passing pts"
+    passing_points is
+      pick yards / 25.0
+        + (pick 4 when has_touchdown and not is_intercepted else 0)
+        - (pick 2 when is_intercepted else 0)
+      when role = 'passing'
+      else 0
+    #(doc) Half-PPR receiving points: 0.5 per catch, 1 per 10 yards, 6 per touchdown
+    # number="0.0"
+    # label="Receiving pts"
+    receiving_points is
+      pick 0.5 + yards / 10.0 + (pick 6 when has_touchdown else 0)
+      when role = 'receiving'
+      else 0
+    #(doc) Rushing points: 1 per 10 yards, 6 per touchdown
+    # number="0.0"
+    # label="Rushing pts"
+    rushing_points is
+      pick yards / 10.0 + (pick 6 when has_touchdown else 0)
+      when role = 'rushing'
+      else 0
+    #(doc) Kicking points: 3 per field goal made, 1 per extra point made
+    # number="0.0"
+    # label="Kicking pts"
+    kicking_points is
+      pick 3 when role = 'field_goal' and is_good
+      pick 1 when role = 'extra_point' and is_good
+      else 0
+    #(doc) Fantasy points this play earned this player, all rules summed
+    # number="0.0"
+    # label="Fantasy pts"
+    points is passing_points + receiving_points + rushing_points + kicking_points
+
+    #(doc) A touchdown this player scored or threw on this play
+    # label="Touchdown"
+    is_touchdown is has_touchdown and not is_intercepted and (role = 'passing' or role = 'receiving' or role = 'rushing')
+    #(doc) Seconds of regulation played when the snap happened: 0 at kickoff, 3600 at the final whistle. Overtime plays read past 3600
+    # label="Game clock (s)"
+    seconds_elapsed is 3600 - seconds_left
+    #(doc) Quarter label, OT for overtime
+    # label="Quarter"
+    quarter_label is pick 'OT' when game_quarter > 4 else concat('Q', game_quarter::string)
+
+  measure:
+    #(doc) Total half-PPR fantasy points
+    # number="#,##0.0"
+    # label="Fantasy pts"
+    fantasy_points is points.sum()
+    #(doc) Passing share of fantasy points
+    # number="#,##0.0"
+    # label="Passing"
+    passing_total is passing_points.sum()
+    #(doc) Rushing share of fantasy points
+    # number="#,##0.0"
+    # label="Rushing"
+    rushing_total is rushing_points.sum()
+    #(doc) Receiving share of fantasy points
+    # number="#,##0.0"
+    # label="Receiving"
+    receiving_total is receiving_points.sum()
+    #(doc) Kicking share of fantasy points
+    # number="#,##0.0"
+    # label="Kicking"
+    kicking_total is kicking_points.sum()
+    #(doc) Distinct games with at least one scoring event
+    # label="Games"
+    games_played is count(game_id)
+    #(doc) Fantasy points per game played
+    # number="0.0"
+    # label="Pts / game"
+    points_per_game is fantasy_points / nullif(games_played, 0)
+    #(doc) Catches
+    # label="Rec"
+    receptions is count() { where: role = 'receiving' }
+    #(doc) Rushing attempts the descriptions name this player on
+    # label="Rush att"
+    rush_attempts is count() { where: role = 'rushing' }
+    #(doc) Passing yards on completions
+    # number="#,##0"
+    # label="Pass yds"
+    passing_yards is yards.sum() { where: role = 'passing' }
+    #(doc) Rushing yards
+    # number="#,##0"
+    # label="Rush yds"
+    rushing_yards is yards.sum() { where: role = 'rushing' }
+    #(doc) Receiving yards
+    # number="#,##0"
+    # label="Rec yds"
+    receiving_yards is yards.sum() { where: role = 'receiving' }
+    #(doc) Touchdowns scored or thrown
+    # label="TD"
+    touchdowns is count() { where: is_touchdown }
+    #(doc) Interceptions thrown
+    # label="INT"
+    interceptions is count() { where: role = 'passing' and is_intercepted }
+    #(doc) Share of fantasy points earned in the fourth quarter or overtime
+    # percent
+    # label="Q4 share"
+    fourth_quarter_share is points.sum() { where: game_quarter >= 4 } / nullif(fantasy_points, 0)
+    #(doc) Share of fantasy points that came from touchdowns (6 for a rush or catch, 4 thrown)
+    # percent
+    # label="TD share"
+    touchdown_share is
+      (count() { where: is_touchdown and role != 'passing' } * 6 + count() { where: is_touchdown and role = 'passing' } * 4)
+      / nullif(fantasy_points, 0)
+
+  #(doc) Fantasy points earned in each quarter, by position
+  # bar_chart
+  view: points_by_quarter is {
+    group_by: quarter_label
+    aggregate: fantasy_points
+    order_by: quarter_label
+  }
+
+  #(doc) Where fantasy points come from at each position: passing, rushing, receiving and kicking totals
+  view: scoring_mix is {
+    group_by:
+      # label="Pos"
+      position
+    aggregate: fantasy_points, passing_total, rushing_total, receiving_total, kicking_total, touchdown_share
+    order_by: fantasy_points desc
+  }
+
+  #(doc) One player's points accumulating through each game: one row per game week per play, with the game clock, for the game-flow chart
+  view: game_flow is {
+    group_by: game_week, seconds_elapsed
+    aggregate: fantasy_points
+    order_by: game_week, seconds_elapsed
+  }
+
+  #(doc) Every scoring play: week, quarter, clock, role, yards, points and the play description
+  view: scoring_plays is {
+    group_by: game_week, quarter_label, clock, role, yards, points, detail
+    order_by: game_week, points desc
+  }
+}
+
+// A query-based source: the fantasy box score is an aggregate over events, so
+// it is defined as a Malloy query rather than as SQL. Joining `games` after
+// the fact gives each row its opponent and result from the player's side.
+#(doc) One row per player per game, 2023-2025 weeks 1-17: a fantasy box score with points by role, touchdowns and yards, the opponent and the final score from the player's side
+source: player_games is fantasy_events -> {
+  group_by: season, game_week, game_id, player_id, full_name, position, team, roster.name_key
+  aggregate:
+    fantasy_points
+    passing_total
+    rushing_total
+    receiving_total
+    kicking_total
+    receptions
+    touchdowns
+    passing_yards
+    rushing_yards
+    receiving_yards
+} extend {
+  join_one: games with game_id
+  join_one: teams with team
+
+  dimension:
+    #(doc) The team on the other side
+    # label="Opp"
+    opponent is pick games.away_team when games.home_team = team else games.home_team
+    #(doc) Home or away from the player's side
+    is_home is games.home_team = team
+    #(doc) "vs DAL" at home, "@ DAL" away
+    # label="Opponent"
+    matchup is pick concat('vs ', opponent) when is_home else concat('@ ', opponent)
+    #(doc) The player's team's points
+    # label="Team pts"
+    team_score is pick games.home_score when is_home else games.away_score
+    #(doc) The opponent's points
+    # label="Opp pts"
+    opponent_score is pick games.away_score when is_home else games.home_score
+    #(doc) "W 27-20" from the player's side
+    # label="Result"
+    result is concat(
+      pick 'W' when team_score > opponent_score pick 'L' when team_score < opponent_score else 'T',
+      ' ', team_score::string, '-', opponent_score::string
+    )
+    #(doc) A big game: 20 or more fantasy points
+    # label="20+ game"
+    is_boom is fantasy_points >= 20
+
+  measure:
+    #(doc) Player-games counted
+    # label="Games"
+    game_count is count()
+    #(doc) Fantasy points per player-game
+    # number="0.0"
+    # label="Pts / game"
+    avg_points is fantasy_points.avg()
+    #(doc) The best single game
+    # number="0.0"
+    # label="Best game"
+    best_game is fantasy_points.max()
+    #(doc) Share of games with 20 or more points
+    # percent
+    # label="20+ rate"
+    boom_rate is count() { where: fantasy_points >= 20 } / nullif(game_count, 0)
+    #(doc) Share of games under 8 points
+    # percent
+    # label="Sub-8 rate"
+    bust_rate is count() { where: fantasy_points < 8 } / nullif(game_count, 0)
+    #(doc) Standard deviation of game scores: how far a typical week lands from the average
+    # number="0.0"
+    # label="Weekly spread"
+    weekly_spread is stddev(fantasy_points)
+
+  #(doc) A player's game log: week, opponent, result, points by role, touchdowns and yards
+  view: game_log is {
+    group_by:
+      # number=id
+      # label="Wk"
+      game_week
+      # label="Date"
+      games.game_date
+      matchup
+      result
+      # number="0.0"
+      # label="Pass"
+      pass_pts is passing_total
+      # number="0.0"
+      # label="Rush"
+      rush_pts is rushing_total
+      # number="0.0"
+      # label="Recv"
+      recv_pts is receiving_total
+      # number="0.0"
+      # label="Kick"
+      kick_pts is kicking_total
+      # label="TD"
+      tds is touchdowns
+      # number="0.0"
+      # label="Fantasy pts"
+      game_points is fantasy_points
+    order_by: game_week
+  }
+
+  #(doc) The best single-game fantasy performances
+  view: top_games is {
+    top: 25
+    group_by:
+      # number=id
+      # label="Season"
+      season
+      # number=id
+      # label="Wk"
+      game_week
+      player_id
+      # label="Player"
+      full_name
+      position
+      team
+      matchup
+      result
+      # number="0.0"
+      # label="Fantasy pts"
+      game_points is fantasy_points
+    order_by: game_points desc
+  }
+
+  #(doc) Points per game against each defense, by position: which defenses fantasy players feasted on
+  view: points_allowed is {
+    group_by:
+      # label="Defense"
+      opponent
+      position
+    aggregate: game_count, avg_points
+    where: position != 'K'
+    order_by: avg_points desc
+  }
+}
+
+#(doc) One row per player per season, 2023-2025 weeks 1-17: total half-PPR points, points per game, the scoring breakdown, and where the player finished overall and at their position
+source: player_seasons is player_games -> {
+  group_by: season, player_id, full_name, position, name_key
+  aggregate:
+    total_points is fantasy_points.sum()
+    games_played is count()
+    passing_points is passing_total.sum()
+    rushing_points is rushing_total.sum()
+    receiving_points is receiving_total.sum()
+    kicking_points is kicking_total.sum()
+    receptions_total is receptions.sum()
+    touchdowns_total is touchdowns.sum()
+    best_game is fantasy_points.max()
+    boom_games is count() { where: fantasy_points >= 20 }
+    bust_games is count() { where: fantasy_points < 8 }
+    // The team a player scored most for; a mid-season trade keeps one team.
+    team is max(team)
+  calculate:
+    overall_finish is rank() { partition_by: season; order_by: total_points desc }
+    position_finish is rank() { partition_by: season, position; order_by: total_points desc }
+} extend {
+  primary_key: season_player_id
+  join_one: teams with team
+
+  dimension:
+    season_player_id is concat(season::string, ':', player_id)
+    #(doc) Fantasy points per game played
+    # number="0.0"
+    # label="Pts / game"
+    points_per_game is total_points / nullif(games_played, 0)
+    #(doc) "WR7": position and finish rank at it
+    # label="Finish"
+    finish_label is concat(position, position_finish::string)
+    #(doc) Elite (top 6 at the position), Starter (7-24), Depth (25-48) or Bench
+    # label="Tier"
+    finish_tier is
+      pick 'Elite' when position_finish <= 6
+      pick 'Starter' when position_finish <= 24
+      pick 'Depth' when position_finish <= 48
+      else 'Bench'
+
+  measure:
+    #(doc) Player-seasons counted
+    # label="Players"
+    player_count is count()
+    #(doc) Average season total
+    # number="0.0"
+    # label="Avg points"
+    avg_season_points is total_points.avg()
+
+  #(doc) The season leaderboard: every player-season ranked by total half-PPR points, with games, points per game, the scoring breakdown and finish ranks
+  view: leaderboard is {
+    group_by:
+      # number=id
+      # label="#"
+      overall_finish
+      player_id
+      # label="Player"
+      full_name
+      # label="Pos"
+      position
+      # label="Team"
+      team
+      # label="Pos rank"
+      position_finish
+      # label="G"
+      games_played
+      # number="#,##0.0"
+      # label="Fantasy pts"
+      total_points
+      points_per_game
+      # number="#,##0.0"
+      # label="Pass"
+      passing_points
+      # number="#,##0.0"
+      # label="Rush"
+      rushing_points
+      # number="#,##0.0"
+      # label="Recv"
+      receiving_points
+      # label="Rec"
+      receptions_total
+      # label="TD"
+      touchdowns_total
+      # number="0.0"
+      # label="Best game"
+      best_game
+      # label="20+ games"
+      boom_games
+    order_by: total_points desc
+  }
+
+  #(doc) One player's seasons side by side: team, games, points, points per game, finish and how often they boomed or busted
+  view: career is {
+    group_by:
+      # number=id
+      # label="Season"
+      season
+      # label="Team"
+      team
+      # label="G"
+      games_played
+      # number="#,##0.0"
+      # label="Fantasy pts"
+      total_points
+      points_per_game
+      finish_label
+      # number=id
+      # label="Overall"
+      overall_finish
+      # number="0.0"
+      # label="Best game"
+      best_game
+      # label="20+ games"
+      boom_games
+      # label="Sub-8 games"
+      bust_games
+    order_by: season desc
+  }
+
+  #(doc) Every player who scored, once each, with their latest season and career points: the player page's search list
+  view: player_index is {
+    group_by: player_id, full_name, position
+    aggregate:
+      # number=id
+      # label="Last season"
+      last_season is season.max()
+      # number="#,##0"
+      # label="Career pts"
+      career_points is total_points.sum()
+    having: career_points >= 20
+    order_by: career_points desc
+  }
+
+  #(doc) The top 12 at each position, the starters in a 12-team league
+  view: top_by_position is {
+    group_by: position
+    nest: top_12 is {
+      top: 12
+      group_by: position_finish, full_name, team
+      aggregate:
+        # number="0.0"
+        # label="Fantasy pts"
+        points is total_points.sum()
+      order_by: position_finish
+    }
+    where: position != 'K'
+    order_by: position
+  }
+
+  #(doc) How fast points fall off at each position: the average season total of the players finishing 1st-6th, 7th-12th, 13th-24th and 25th-36th
+  view: positional_scarcity is {
+    group_by:
+      # label="Pos"
+      position
+    group_by:
+      # label="Finish"
+      finish_band is
+        pick '01-06' when position_finish <= 6
+        pick '07-12' when position_finish <= 12
+        pick '13-24' when position_finish <= 24
+        pick '25-36' when position_finish <= 36
+        else null
+    aggregate: avg_season_points
+    where: position_finish <= 36 and position != 'K'
+    order_by: position, finish_band
+  }
+
+  #(doc) The cliff at each position: the average season of a top-6 finisher, a 7th-12th and a 13th-24th, and how much more the elite scored than the 13th-24th
+  view: position_cliff is {
+    group_by:
+      # label="Pos"
+      position
+    aggregate:
+      # number="0.0"
+      # label="Top 6"
+      elite_avg is total_points.avg() { where: position_finish <= 6 }
+      # number="0.0"
+      # label="7th-12th"
+      starter_avg is total_points.avg() { where: position_finish > 6 and position_finish <= 12 }
+      # number="0.0"
+      # label="13th-24th"
+      depth_avg is total_points.avg() { where: position_finish > 12 and position_finish <= 24 }
+      # percent
+      # label="Top 6 over 13th-24th"
+      elite_premium is total_points.avg() { where: position_finish <= 6 } / total_points.avg() { where: position_finish > 12 and position_finish <= 24 } - 1
+      # percent
+      # label="Top 6 over 7th-12th"
+      starter_premium is total_points.avg() { where: position_finish <= 6 } / total_points.avg() { where: position_finish > 6 and position_finish <= 12 } - 1
+    where: position = 'QB' or position = 'RB' or position = 'WR' or position = 'TE'
+    order_by: elite_premium desc
+  }
+}
+
+// The 2026 market is a SQL source for one reason: the position ranks a value
+// read compares (where the market drafts a player against where the
+// projection ranks him), and the replacement level value over replacement is
+// measured from, are windows over the whole board.
+//
+// Replacement is the last starter in a 12-team league that starts one QB, two
+// RBs, three WRs, one TE and one flex: QB12, RB30, WR36, TE12 by projection.
+#(doc) The 2026 draft market, one row per QB, RB, WR and TE: average draft position (ADP) in 12-team half-PPR drafts and the round and pick it implies, season projection and projected stats, bye week, boom and bust rates, schedule-strength ranks, the position ranks implied by ADP and by projection, and value over a replacement-level starter
+source: draft_board is duckdb.sql("""
+  WITH ranked AS (
+    SELECT *,
+      CAST(floor((adp - 1) / 12) + 1 AS INTEGER) AS draft_round,
+      CAST(floor(adp - 1) % 12 + 1 AS INTEGER) AS pick_in_round,
+      CASE WHEN adp IS NOT NULL THEN rank() OVER (PARTITION BY position, adp IS NULL ORDER BY adp) END AS adp_position_rank,
+      CASE WHEN projected_points IS NOT NULL THEN rank() OVER (PARTITION BY position, projected_points IS NULL ORDER BY projected_points DESC) END AS projected_position_rank
+    FROM 'data/draft_board_2026.parquet'
+  ),
+  replacement AS (
+    SELECT position, max(projected_points) AS replacement_points
+    FROM ranked
+    WHERE projected_position_rank = CASE position WHEN 'QB' THEN 12 WHEN 'RB' THEN 30 WHEN 'WR' THEN 36 WHEN 'TE' THEN 12 END
+    GROUP BY position
+  )
+  SELECT ranked.*, replacement.replacement_points,
+    ranked.projected_points - replacement.replacement_points AS value_over_replacement
+  FROM ranked LEFT JOIN replacement USING (position)
+""") extend {
+  primary_key: draft_id
+  join_one: teams with team
+  // The play-by-play and the market use different player ids; the name key
+  // and position are what they share. 2025 is the season before the market.
+  join_one: last_season is player_seasons on name_key = last_season.name_key and position = last_season.position and last_season.season = 2025
+
+  dimension:
+    #(doc) Whether the player is drafted at all: has a 2026 ADP
+    # label="Drafted"
+    is_drafted is adp is not null
+    #(doc) "4.07": round and pick in a 12-team draft, from ADP
+    # label="Pick"
+    draft_slot is concat(draft_round::string, '.', pick '0' when pick_in_round < 10 else '', pick_in_round::string)
+    #(doc) ADP position rank minus projected position rank. Positive means the projection likes the player more than the market does: a steal. Negative means the market pays for more than the projection sees
+    # label="Value vs ADP"
+    value_vs_adp is adp_position_rank - projected_position_rank
+    #(doc) Boom rate minus bust rate, on a -100 to 100 scale: the site's Boom vs Bust number
+    # label="Boom vs bust"
+    boom_vs_bust is round((boom_rate - bust_rate) * 100)
+    #(doc) Schedule strength by rank: Easy (1-10), Neutral, Hard (22-32)
+    # label="SOS"
+    sos_tier is
+      pick 'Easy' when sos_rank <= 10
+      pick 'Hard' when sos_rank >= 22
+      pick 'Neutral' when sos_rank is not null
+      else null
+    #(doc) Week 1 matchup by rating: Prime (70+), Neutral, Tough (under 40)
+    # label="Wk 1"
+    week1_tier is
+      pick 'Prime' when week1_matchup >= 70
+      pick 'Tough' when week1_matchup < 40
+      pick 'Neutral' when week1_matchup is not null
+      else null
+    #(doc) Projected points above the replacement-level starter at the position (QB12, RB30, WR36, TE12 by projection in a 12-team league with a flex). The cheatsheet's value bar
+    # number="+0;-0"
+    # label="VOR"
+    vor is value_over_replacement
+    #(doc) Projected points minus last season's actual total
+    # number="+0.0;-0.0"
+    # label="Proj vs 2025"
+    projection_change is projected_points - last_season.total_points
+
+  measure:
+    #(doc) Players on the board
+    # label="Players"
+    board_count is count()
+    #(doc) Average projected points
+    # number="0.0"
+    # label="Avg projection"
+    avg_projection is projected_points.avg()
+
+  #(doc) The whole drafted board in ADP order: what the cheatsheet page re-ranks as names come off the board
+  view: cheatsheet is {
+    group_by:
+      draft_id
+      name
+      position
+      team
+      adp
+      draft_slot
+      adp_position_rank
+      bye_week
+      age
+      # number="0"
+      # label="Proj pts"
+      projected_points
+      projected_position_rank
+      value_vs_adp
+      # percent
+      # label="Boom"
+      boom_rate
+      # percent
+      # label="Bust"
+      bust_rate
+      boom_vs_bust
+      # percent
+      # label="Consistency"
+      consistency
+      # label="SOS rank"
+      sos_rank
+      sos_tier
+      # label="Playoff SOS"
+      playoff_sos_rank
+      # label="Wk 1 matchup"
+      week1_matchup
+      week1_tier
+      vor
+      # label="2025 player"
+      last_season.player_id
+      # label="2025 finish"
+      last_season.finish_label
+      # number="0.0"
+      # label="2025 pts"
+      last_season.total_points
+      # number="0.0"
+      # label="2025 pts / game"
+      last_season.points_per_game
+      # label="2025 G"
+      last_season.games_played
+    where: is_drafted
+    order_by: adp
+  }
+
+  #(doc) Market steals: drafted players whose projection ranks them higher at their position than their ADP does
+  view: market_steals is {
+    top: 15
+    group_by: name, position, team, adp, adp_position_rank, projected_position_rank, value_vs_adp
+    where: is_drafted and adp <= 160 and value_vs_adp > 0
+    order_by: value_vs_adp desc
+  }
+
+  #(doc) Overpriced: drafted players the market takes well ahead of where the projection ranks them
+  view: overpriced is {
+    top: 15
+    group_by: name, position, team, adp, adp_position_rank, projected_position_rank, value_vs_adp
+    where: is_drafted and adp <= 160 and value_vs_adp < 0
+    order_by: value_vs_adp
+  }
+
+  #(doc) Projected points against ADP for every drafted player: the market's price curve by position
+  # scatter_chart
+  view: price_curve is {
+    group_by: adp, projected_points, position
+    where: is_drafted and adp <= 200
+  }
+
+  #(doc) Each position's draft capital: players drafted in the first ten rounds, their average ADP and projection
+  view: by_position is {
+    group_by:
+      # label="Pos"
+      position
+    aggregate:
+      board_count
+      # number="0.0"
+      # label="Avg ADP"
+      avg_adp is adp.avg()
+      avg_projection
+    where: is_drafted and adp <= 120
+    order_by: board_count desc
+  }
+}
+
+#(doc) The 2025 preseason draft market, one row per drafted player (FFToday's Aug. 29 half-PPR consensus, with MFL redraft data marked `supplemental` for players FFToday lacked), beside how each one actually finished in 2025
+source: adp_2025 is duckdb.table('data/adp_2025.parquet') extend {
+  join_one: finish is player_seasons on name_key = finish.name_key and position = finish.position and finish.season = 2025
+
+  dimension:
+    #(doc) Round the player went in a 12-team draft
+    # number=id
+    # label="Round"
+    draft_round is floor((adp - 1) / league_size) + 1
+    #(doc) Rounds 1-3, 4-6, 7-9, 10+: where in the draft the pick was spent
+    # label="Draft phase"
+    draft_phase is
+      pick 'Rounds 1-3' when adp <= 36
+      pick 'Rounds 4-6' when adp <= 72
+      pick 'Rounds 7-9' when adp <= 108
+      else 'Rounds 10+'
+    #(doc) Drafted position rank minus finishing position rank. Positive means the player finished better than the price; a player with no 2025 points counts as finishing last
+    # label="Finish vs ADP"
+    finish_vs_adp is position_rank - coalesce(finish.position_finish, 100)
+    #(doc) First round of the draft phase (1, 4, 7 or 10), so phases sort in draft order
+    # number=id
+    # label="From round"
+    phase_start is
+      pick 1 when adp <= 36
+      pick 4 when adp <= 72
+      pick 7 when adp <= 108
+      else 10
+    #(doc) Hit when the player finished at or above the rank drafted, Miss otherwise
+    # label="Outcome"
+    outcome is pick 'Hit' when finish_vs_adp >= 0 else 'Miss'
+    #(doc) Whether the player scored in 2025 at all
+    # label="Played"
+    played is finish.player_id is not null
+
+  measure:
+    #(doc) Drafted players counted
+    # label="Picks"
+    pick_count is count()
+    #(doc) Share of picks that finished at or above their drafted position rank
+    # percent
+    # label="Hit rate"
+    hit_rate is count() { where: finish_vs_adp >= 0 } / nullif(pick_count, 0)
+    #(doc) Average finish vs ADP, in position-rank spots
+    # number="+0.0;-0.0"
+    # label="Avg finish vs ADP"
+    avg_finish_vs_adp is finish_vs_adp.avg()
+    #(doc) Average 2025 fantasy points per game of the picks that played
+    # number="0.0"
+    # label="Pts / game"
+    avg_points_per_game is finish.points_per_game.avg()
+
+  #(doc) Every 2025 pick with its price and its finish
+  view: pick_results is {
+    group_by:
+      # label="Player"
+      name
+      position
+      team
+      # number="0.0"
+      # label="ADP"
+      adp
+      draft_round
+      # label="ADP pos rank"
+      position_rank
+      # label="Finish"
+      finish.position_finish
+      finish_vs_adp
+      # number="0.0"
+      # label="2025 pts"
+      finish.total_points
+      finish.points_per_game
+      finish.games_played
+      source_tier
+    order_by: adp
+  }
+
+  #(doc) Hit rate and average finish against price, by position and by phase of the draft
+  view: hit_rate_by_round is {
+    group_by:
+      # label="Pos"
+      position
+      phase_start
+      draft_phase
+    aggregate: pick_count, hit_rate, avg_finish_vs_adp, avg_points_per_game
+    where: position = 'QB' or position = 'RB' or position = 'WR' or position = 'TE'
+    order_by: position, phase_start
+  }
+
+  #(doc) Hit rate and average finish against price by phase of the draft, every position together
+  view: hit_rate_by_phase is {
+    group_by: phase_start, draft_phase
+    aggregate:
+      pick_count
+      hit_rate
+      avg_finish_vs_adp
+      avg_points_per_game
+      # percent
+      # label="Scored at all"
+      played_rate is count() { where: played } / nullif(pick_count, 0)
+    where: position = 'QB' or position = 'RB' or position = 'WR' or position = 'TE'
+    order_by: phase_start
+  }
+
+  #(doc) The picks that beat their price by the most position-rank spots
+  view: biggest_hits is {
+    top: 15
+    group_by: name, position, adp, position_rank, finish.position_finish, finish_vs_adp, finish.total_points
+    where: adp <= 180
+    order_by: finish_vs_adp desc
+  }
+
+  #(doc) The early picks that missed their price by the most
+  view: biggest_misses is {
+    top: 15
+    group_by: name, position, adp, position_rank, finish.position_finish, finish_vs_adp, finish.games_played
+    where: adp <= 72
+    order_by: finish_vs_adp
+  }
+}
+
+#(doc) Players with a scoring season, for the Player filter control's option list
+query: player_suggest is player_seasons -> {
+  group_by: full_name
+  where: total_points >= 50
+  order_by: full_name
+}

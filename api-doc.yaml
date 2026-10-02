@@ -2347,6 +2347,148 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /environments/{environmentName}/packages/{packageName}/data-apps/{slug}:
+    get:
+      tags:
+        - data-apps
+      operationId: get-data-app-manifest
+      summary: Read a manifest-backed data app
+      description: |
+        Returns the manifest of the manifest-backed data app at
+        `public/apps/{slug}/`, parsed, with the SHA-256 of its `app.json` text as
+        `contentHash`, which a later write or delete sends back as
+        `expectedHash`. 404 when the package has no such app. An `app.json`
+        this server cannot read still answers 200, with `manifest` absent and
+        `problem` saying why, so a caller can replace it by its hash.
+      parameters:
+        - $ref: "#/components/parameters/environmentName"
+        - $ref: "#/components/parameters/packageName"
+        - $ref: "#/components/parameters/dataAppSlug"
+      responses:
+        "200":
+          description: The app's manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataAppManifestRead"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - data-apps
+      operationId: put-data-app
+      summary: Save a manifest-backed data app into the package
+      description: |
+        Writes `public/apps/{slug}/app.json` and the generated `index.html` beside
+        it, so the finding is served as a data app at
+        `/environments/{environmentName}/packages/{packageName}/apps/{slug}/`.
+
+        The manifest is validated, and every one of its queries is compiled
+        against THIS package's models; a query that does not compile here (a
+        model the package does not have, a source it does not declare) refuses
+        the whole write with the problems, writing nothing. No query is run.
+        That compile check is what keeps a manifest in the package its data
+        came from: its model paths are package-relative and resolve nowhere
+        else.
+
+        `expectedHash` is the SHA-256 (hex) of the `app.json` text the caller
+        read. When the file no longer hashes to it the write is refused with 409
+        and nothing is merged. Omit it to create the app: an existing app is then
+        refused with 409 too. The directory is replaced whole, by rename, so a
+        reader never sees one file of the old pair beside one of the new; any
+        other file in it does not survive a replace. No package reload happens:
+        `public/` is not compiled.
+
+        A create answers 201 and a replace 200. Refused with 403 under
+        `frozenConfig: true`. Unauthenticated like every write on this server;
+        see docs/security-posture.md.
+      parameters:
+        - $ref: "#/components/parameters/environmentName"
+        - $ref: "#/components/parameters/packageName"
+        - $ref: "#/components/parameters/dataAppSlug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DataAppWriteRequest"
+      responses:
+        "200":
+          description: The app was replaced
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataAppWriteResult"
+        "201":
+          description: The app did not exist and was created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataAppWriteResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description:
+            The app changed since the caller read it, or already exists and no
+            `expectedHash` was sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - data-apps
+      operationId: delete-data-app
+      summary: Remove a manifest-backed data app from the package
+      description: |
+        Removes `public/apps/{slug}/`, under the same precondition as a write:
+        `expectedHash` must be the SHA-256 of the `app.json` the caller read,
+        and a mismatch is a 409 with nothing removed. Refused with 403 under
+        `frozenConfig: true`.
+      parameters:
+        - $ref: "#/components/parameters/environmentName"
+        - $ref: "#/components/parameters/packageName"
+        - $ref: "#/components/parameters/dataAppSlug"
+        - name: expectedHash
+          in: query
+          description: SHA-256 (hex) of the `app.json` text the caller read
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: The app was removed
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The app changed since the caller read it
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
   /environments/{environmentName}/packages/{packageName}/events:
     get:
       tags:
@@ -5831,6 +5973,72 @@ components:
             the file on disk no longer hashes to it. Omit to create the file,
             which is then refused with 409 if it already exists.
 
+    DataAppWriteRequest:
+      type: object
+      description: A manifest to save as a data app
+      required:
+        - manifest
+      properties:
+        manifest:
+          type: object
+          additionalProperties: true
+          description:
+            The app manifest (`app.json`), validated on write; see
+            docs/html-data-apps.md#manifest-backed-apps-a-saved-finding
+        expectedHash:
+          type: string
+          description:
+            SHA-256 (hex) of the `app.json` text the caller read. Refused with
+            409 when the file no longer hashes to it. Omit to create the app,
+            which is then refused with 409 if it already exists.
+
+    DataAppWriteResult:
+      type: object
+      description: What a data app write left in the package
+      required:
+        - resource
+        - path
+        - contentHash
+        - created
+      properties:
+        resource:
+          type: string
+          description: Root-relative URL of the served page (not under /api/v0)
+        path:
+          type: string
+          description: The manifest written, relative to the package's public/ directory
+        contentHash:
+          type: string
+          description: SHA-256 (hex) of `app.json` as written; the next write's `expectedHash`
+        created:
+          type: boolean
+          description: True when the app did not exist before
+
+    DataAppManifestRead:
+      type: object
+      description: A manifest-backed data app as stored
+      required:
+        - resource
+        - path
+        - contentHash
+      properties:
+        resource:
+          type: string
+          description: Root-relative URL of the served page (not under /api/v0)
+        path:
+          type: string
+          description: The manifest, relative to the package's public/ directory
+        contentHash:
+          type: string
+          description: SHA-256 (hex) of the `app.json` text
+        manifest:
+          type: object
+          additionalProperties: true
+          description: The parsed manifest; absent when it could not be read
+        problem:
+          type: string
+          description: Why the manifest could not be read; absent when it could
+
     ModelSourceWriteResult:
       type: object
       description: What a dashboard write left in the package
@@ -7181,3 +7389,11 @@ components:
       description: ID of the materialization
       schema:
         type: string
+    dataAppSlug:
+      name: slug
+      in: path
+      required: true
+      description: The app's directory under `public/apps/`
+      schema:
+        type: string
+        pattern: "^[a-z0-9][a-z0-9-]{0,63}$"

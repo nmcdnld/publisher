@@ -1,0 +1,1255 @@
+<!doctype html>
+<!--
+Copyright (c) Credible Data Inc.
+SPDX-License-Identifier: MIT
+-->
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Part 1 — Unboxing Publisher and adding Question mode</title>
+  <style>
+    :root {
+      --ink: #16181d;
+      --ink-2: #4a505c;
+      --ink-3: #7b8190;
+      --rule: #e3e5ea;
+      --wash: #f6f7f9;
+      --accent: #1f6feb;
+      --accent-wash: #eaf2ff;
+      --good: #1a7f37;
+      --warn: #9a6700;
+      --warn-wash: #fff8e1;
+      --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      --serif: "Iowan Old Style", "Charter", Georgia, serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font: 16px/1.6 var(--sans);
+      background: #fff;
+    }
+
+    .page {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 760px);
+      gap: 56px;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 56px 32px 120px;
+    }
+
+    nav.toc {
+      position: sticky;
+      top: 32px;
+      align-self: start;
+      font-size: 13px;
+    }
+
+    nav.toc .label {
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      margin-bottom: 12px;
+    }
+
+    nav.toc ol {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      counter-reset: toc;
+    }
+
+    nav.toc li {
+      counter-increment: toc;
+      margin: 0 0 8px;
+    }
+
+    nav.toc a {
+      color: var(--ink-2);
+      text-decoration: none;
+    }
+
+    nav.toc li a::before {
+      content: counter(toc, decimal-leading-zero);
+      font-family: var(--mono);
+      color: var(--ink-3);
+      margin-right: 8px;
+    }
+
+    nav.toc a:hover {
+      color: var(--accent);
+    }
+
+    nav.toc .series {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    nav.toc .series a {
+      display: block;
+      padding: 5px 0 5px 10px;
+      border-left: 2px solid var(--rule);
+      line-height: 1.35;
+    }
+
+    nav.toc .series a b {
+      display: block;
+      font: 600 10.5px/1.5 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+
+    nav.toc .series a[aria-current] {
+      border-left-color: var(--accent);
+      color: var(--ink);
+    }
+
+    nav.toc .series a[aria-current] b {
+      color: var(--accent);
+    }
+
+    main {
+      min-width: 0;
+    }
+
+    .series-foot {
+      margin-top: 88px;
+      padding-top: 28px;
+      border-top: 1px solid var(--rule);
+    }
+
+    .series-foot .label {
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+
+    .series-foot .card {
+      display: block;
+      margin-top: 14px;
+      padding: 18px 22px;
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      color: var(--ink);
+      text-decoration: none;
+      background: var(--wash);
+    }
+
+    .series-foot .card:hover {
+      border-color: var(--accent);
+    }
+
+    .series-foot .card .eyebrow {
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .series-foot .card .title {
+      display: block;
+      font: 600 22px/1.25 var(--serif);
+      margin: 8px 0 6px;
+    }
+
+    .series-foot .card .blurb {
+      display: block;
+      font-size: 15px;
+      color: var(--ink-2);
+    }
+
+    .series-foot .colophon {
+      font: 12px/1.5 var(--mono);
+      color: var(--ink-3);
+      margin-top: 18px;
+    }
+
+    header .kicker {
+      font: 600 12px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    h1 {
+      font: 600 44px/1.1 var(--serif);
+      letter-spacing: -.01em;
+      margin: 14px 0 16px;
+    }
+
+    .dek {
+      font-size: 19px;
+      color: var(--ink-2);
+      margin: 0 0 20px;
+    }
+
+    .byline {
+      font: 12px/1.5 var(--mono);
+      color: var(--ink-3);
+    }
+
+    h2 {
+      font: 600 28px/1.2 var(--serif);
+      margin: 72px 0 8px;
+      padding-top: 24px;
+      border-top: 1px solid var(--rule);
+    }
+
+    h2 .num {
+      font: 500 14px var(--mono);
+      color: var(--ink-3);
+      margin-right: 10px;
+      vertical-align: 4px;
+    }
+
+    h3 {
+      font-size: 17px;
+      margin: 36px 0 6px;
+    }
+
+    p,
+    li {
+      color: var(--ink);
+    }
+
+    .lede {
+      color: var(--ink-2);
+      font-size: 17px;
+      margin-top: 0;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    code,
+    kbd {
+      font: 13.5px var(--mono);
+      background: var(--wash);
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      padding: 0 4px;
+    }
+
+    pre {
+      font: 13px/1.55 var(--mono);
+      background: #0f1115;
+      color: #e6e8ee;
+      border-radius: 8px;
+      padding: 16px 18px;
+      overflow-x: auto;
+    }
+
+    pre .c {
+      color: #7d8597;
+    }
+
+    pre .k {
+      color: #ff9e64;
+    }
+
+    pre .t {
+      color: #9ece6a;
+    }
+
+    .tldr {
+      background: var(--accent-wash);
+      border: 1px solid #cfe0ff;
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin: 32px 0 0;
+    }
+
+    .tldr strong.label {
+      display: block;
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .tldr ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .tldr li {
+      margin: 4px 0;
+    }
+
+    .ed {
+      background: var(--warn-wash);
+      border-left: 3px solid #e3b341;
+      padding: 10px 14px;
+      margin: 16px 0;
+      font-size: 14px;
+      color: var(--warn);
+    }
+
+    .ed::before {
+      content: "Editor: ";
+      font-weight: 600;
+    }
+
+    figure {
+      margin: 28px 0;
+    }
+
+    figure.wide {
+      margin-left: -60px;
+      margin-right: -60px;
+    }
+
+    figure img {
+      width: 100%;
+      display: block;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px rgba(16, 24, 40, .06);
+    }
+
+    figcaption {
+      font-size: 13.5px;
+      color: var(--ink-2);
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    figcaption b {
+      color: var(--ink);
+    }
+
+    figcaption .src {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--ink-3);
+    }
+
+    .pair {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      margin: 28px 0;
+    }
+
+    .pair figure {
+      margin: 0;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr 1.35fr 0.8fr;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .stats div {
+      padding: 12px 14px;
+      border-right: 1px solid var(--rule);
+    }
+
+    .stats div:last-child {
+      border-right: 0;
+    }
+
+    .stats b {
+      display: block;
+      font: 600 22px/1.2 var(--mono);
+    }
+
+    .stats b i {
+      font: 400 13px var(--sans);
+      font-style: normal;
+      color: var(--ink-2);
+      margin-left: 2px;
+    }
+
+    .stats span {
+      font-size: 12px;
+      color: var(--ink-3);
+    }
+
+    .stats .mix {
+      display: grid;
+      grid-template-columns: auto auto;
+      justify-content: start;
+      align-content: center;
+      gap: 2px 14px;
+    }
+
+    .stats .mix b {
+      font-size: 17px;
+      line-height: 1.35;
+      white-space: nowrap;
+    }
+
+    .stats .mix b i {
+      font-size: 12px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14px;
+      margin: 16px 0;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--rule);
+      vertical-align: top;
+    }
+
+    th {
+      font: 600 11px var(--mono);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+
+    .steps {
+      counter-reset: step;
+      list-style: none;
+      padding: 0;
+    }
+
+    .steps>li {
+      counter-increment: step;
+      position: relative;
+      padding-left: 36px;
+      margin: 14px 0;
+    }
+
+    .steps>li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 1px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font: 600 12px/22px var(--sans);
+      text-align: center;
+    }
+
+    .callout {
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      padding: 14px 18px;
+      background: var(--wash);
+      font-size: 15px;
+    }
+
+    @media (max-width: 960px) {
+      .page {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+
+      nav.toc {
+        display: none;
+      }
+
+      figure.wide {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      .pair,
+      .stats {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <nav class="toc">
+      <div class="series">
+        <div class="label">Publisher unboxing</div>
+        <a href="index.html" aria-current="page"><b>Part 1</b>Unboxing Publisher</a>
+        <a href="credible-demo.html"><b>Part 2</b>Credible demo workspace</a>
+      </div>
+      <div class="label">Contents</div>
+      <ol>
+        <li><a href="#unboxing">Unboxing</a></li>
+        <li><a href="#prior-art">Prior art</a></li>
+        <li><a href="#football">Questionable Football</a></li>
+        <li><a href="#signals">Signals Research</a></li>
+        <li><a href="#teardown">Unboxing takeaways</a></li>
+        <li><a href="#question">Proposal: Question mode</a></li>
+        <li><a href="#experiment">Experiment: a cold start</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <header>
+        <div class="kicker">Publisher unboxing · Part 1 of 2 · Example Packages and Question mode</div>
+        <h1>Unboxing Publisher and adding Question mode</h1>
+        <p class="dek">I rebuilt two of my existing data projects as Publisher packages, used them to learn more about
+          Publisher and its codebase, and added a new way to ask a question in the explorer.</p>
+        <div class="byline">Noah Mac · product + design engineering update · Sept 28 - Oct 1, 2026
+        </div>
+
+        <div class="tldr">
+          <strong class="label">TL;DR</strong>
+          <ul>
+            <li><b>Two new example packages</b>, <code>questionable-football</code> and <code>signals-research</code>,
+              rebuilt from <a href="https://data.questionablefootball.com">data.questionablefootball.com</a> and <a
+                href="https://stocks.palm-springs.ai">stocks.palm-springs.ai</a> on Publisher. Every number is defined
+              in Malloy, not in an export script or in app code.</li>
+            <li><b>I spent time with every surface:</b> HTML data apps, no-code dashboards, Malloy notebooks, and
+              model code. Together that is about 3,000 lines of Malloy and 6,300 lines of HTML, JS and CSS. Opus 5.5 is
+              a beast!</li>
+            <li><b>Question mode</b> is a new way to build a query in the model explorer. The user builds a query by
+              answering three questions
+              (measure, group by, segment by), and any combination of answers draws a valid chart. Switching to the
+              Fields builder keeps the query: all Question mode queries are starting points for what can be expressed in
+              the Fields mode builder.</li>
+            <li><b>The teardown:</b> the model, the governed query path, and the agent workflow all work great
+              (genuinely first-class). The
+              friction
+              was
+              in the first ten minutes (connecting MCP, reloading, stale models) and in the explorer, which assumes its
+              user
+              already thinks in Malloy or Looker.</li>
+            <li><b><a href="#experiment">The experiment</a>:</b> a fresh agent, starting cold from another repo, built
+              two no-code dashboards in about an hour and hit the same early friction.</li>
+            <li><b><a href="credible-demo.html">Part 2</a></b> follows these packages into the Credible demo workspace,
+              a front door to Publisher where user content powers an autonomous analytics workspace &amp; library.</li>
+          </ul>
+        </div>
+      </header>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="unboxing"><span class="num">01</span>Unboxing</h2>
+      <p class="lede">What comes in the box, and what a new user, or an agent, sees in the first hour.</p>
+
+      <p>Publisher serves Malloy packages over REST, MCP, and puts a Console UI in front of them. A
+        package
+        is a directory: <code>publisher.json</code>, some <code>.malloy</code> models, data or a connection, and
+        optionally a <code>public/</code> folder of pages. From that one directory you get six surfaces, all leveraging
+        the
+        same governed semantic model:</p>
+
+      <table>
+        <tr>
+          <th>Surface</th>
+          <th>What it is</th>
+          <th>Who it's for</th>
+        </tr>
+        <tr>
+          <td>Model</td>
+          <td>Sources, dimensions, measures and views in <code>.malloy</code> files</td>
+          <td>Developers, and whoever owns the definitions</td>
+        </tr>
+        <tr>
+          <td>Explorer</td>
+          <td>Build a query against a source in the Console</td>
+          <td>Analysts and operators who want to answer their own structured questions</td>
+        </tr>
+        <tr>
+          <td>Dashboard</td>
+          <td>A tagged <code>dashboards/*.malloy</code> file: filters, grid layout, drill-through</td>
+          <td>Operators who want filters and no code, viewers who want to see the data</td>
+        </tr>
+        <tr>
+          <td>Notebook</td>
+          <td>A <code>.malloynb</code> file that mixes prose and queries</td>
+          <td>Analysts and technical viewers who want to walk through one argument or workflow</td>
+        </tr>
+        <tr>
+          <td>Data app</td>
+          <td>Self-contained HTML in <code>public/</code> calling <code>Publisher.query</code></td>
+          <td>Developers who build custom applications and tools that leverage governed data modeling, viewers who want
+            to use the data</td>
+        </tr>
+        <tr>
+          <td>Chat</td>
+          <td>The conversational client you bring (Claude, Cursor, Codex), connected over MCP (Publisher hosted). It
+            discovers and
+            queries the other surfaces, and builds from them</td>
+          <td>Anyone who would rather ask than click or write by hand</td>
+        </tr>
+      </table>
+
+      <h3>The first hour</h3>
+      <p>Despite being as optimistic and <em>leaned in</em> as I am about agentic software development and analytics, I
+        would still
+        describe my approach to prompting code agents as "manual mode". I open Cursor and look for the "IDE" button so
+        I can always see the repo and the code I'm editing. I can't read <em>all</em> the code that agents are
+        generating for me anymore,
+        but I
+        do still read
+        the code.
+        <br /><br />My experience for this unboxing started with the Publisher repo as the entry point, and familiarity
+        with how modern codebases work.
+        The following sections describe the two example packages I added to the repo, powered by Publisher. At the
+        bottom of this document I reflect more on how I expect customers &amp; real world users to encounter these
+        concepts,
+        and <a href="#experiment">run a simple experiment</a> that I'd like to continue.
+      </p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="prior-art"><span class="num">02</span>Prior art</h2>
+      <p class="lede">Both packages started from projects I've already been working on and had data access, so the
+        design
+        question for me was never "what should this show?" It was "can Publisher power it?"</p>
+
+      <figure class="wide">
+        <a href="https://data.questionablefootball.com"><img src="img/prior-qf.png"
+            alt="data.questionablefootball.com: a light-mode fantasy research lab with a player table and a detail panel"></a>
+        <figcaption><b><a href="https://data.questionablefootball.com">data.questionablefootball.com</a></b> — the Fan
+          Research Lab. A dense player table (ADP, projection, boom-or-bust, consistency, matchup gauge, strength of
+          schedule) beside a detail panel with the cumulative play-by-play scoring chart. It's a
+          "cheatsheet" for
+          sharp
+          fantasy football managers on draft day.
+        </figcaption>
+      </figure>
+
+      <figure class="wide">
+        <a href="https://stocks.palm-springs.ai"><img src="img/prior-stocks.png"
+            alt="stocks.palm-springs.ai: a light-mode watchlist with sparklines per timeframe"></a>
+        <figcaption><b><a href="https://stocks.palm-springs.ai">stocks.palm-springs.ai</a></b> — a watchlist,
+          signals screener,
+          and market research diary over public trading symbols: per-timeframe sparklines, 52-week range bars, relative
+          volume,
+          RSI, and the next earnings date. It's an Unusual Whales and GEX theory data project.
+        </figcaption>
+      </figure>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="football"><span class="num">03</span>Working example: Questionable Football</h2>
+      <p class="lede">A draft-day tool for a fantasy manager in a 12-team, half-PPR league. The cheatsheet page answers
+        two
+        questions: "who do I take with this pick?" and "do I take this position now, or wait for my next turn?" The
+        other pages allow for in-depth player and team analysis before the draft or between picks.</p>
+
+      <div class="stats">
+        <div><b>147,928 <i>plays</i></b><span>across 855 games, 2023–25</span></div>
+        <div><b>926 <i>players</i></b><span>on the 2026 draft board</span></div>
+        <div class="mix">
+          <b>4 <i>data apps</i></b><b>3 <i>dashboards</i></b>
+          <b>1 <i>notebook</i></b><b>2 <i>saved insights</i></b>
+        </div>
+        <div><b>~1.8k <i>lines</i></b><span>of Malloy</span></div>
+      </div>
+
+      <p>The <code>questionable-football</code> package is built from three modeling layers.
+        <code>football.malloy</code> describes
+        the NFL itself: teams,
+        roster, games, and
+        plays.
+        <code>fantasy.malloy</code> scores every play-by-play game log entry under half-PPR rules written as dimensions,
+        then rolls that up
+        into box scores, season finishes, and the 2025 and 2026 draft markets. <code>market.malloy</code> captures the
+        2026
+        betting lines and futures. Each page queries a small scoped source (<code>player_app.malloy</code> and so on)
+        which declares the core public interface for that page.
+      </p>
+
+      <figure class="wide">
+        <img src="img/qf-cheatsheet.png" alt="Cheatsheet page">
+        <figcaption><b>Cheatsheet</b> — the page you keep open during the draft. The best available players by
+          ADP lead,
+          with value over replacement drawn as a signed bar. <i>Pick now vs. wait</i> compares the best value at each
+          position now (solid dot) with the best likely to be left after the next 12 picks (empty dot); a long gap means
+          take the position now. You cross players off as they're drafted, and that list is kept in the browser while
+          the filters live in the URL. Built as a data app depending on the <code>fantasy.malloy</code>
+          source.
+        </figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/qf-player.png" alt="Player page for Jalen Hurts">
+        <figcaption><b>Player research</b> — the play-by-play point accumulation chart from the original site, rebuilt:
+          each game's fantasy
+          points
+          add up from kickoff to the final whistle, with one game highlighted at a time. Selecting a week
+          cross-filters the bars, the game log, and the scoring plays, and each play shows its points next to the
+          play-by-play text. Built as a data app depending on the <code>player_app.malloy</code> source.</figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/qf-leaders.png" alt="Leaders page">
+        <figcaption><b>0.5 PPR Leaderboard</b> — one season's leaderboard with week-by-week sparkbars and spreadsheet
+          metrics, positional
+          scarcity chart,
+          where
+          the points come from, and the best single games. Built as a data app depending on the
+          <code>leaders_app.malloy</code>
+          source.
+        </figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/qf-teams.png" alt="Teams page">
+        <figcaption><b>Team projections</b> — each team's win total beside the wins its lines imply, above a 32-by-18
+          schedule
+          grid shaded by win probability. Built as a data app depending on the <code>team_app.malloy</code> source.
+        </figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/qf-finding.png" alt="Saved finding: the tight end cliff">
+        <figcaption><b>A saved insight</b> — the claim, the
+          reasoning behind it, and an evidence chart that re-runs <code>player_seasons -&gt; position_cliff</code> live.
+          The text records the date it was written on, so a reader (or agent) can tell if the chart and the
+          finding have
+          drifted apart. An integration with materialization UX to keep the finding in sync with the
+          data should be explored in a future update.</figcaption>
+      </figure>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="signals"><span class="num">04</span>Working example: Signals Research</h2>
+      <p class="lede">A watchlist diary and technical signals workbench for a discretionary trader who does their own
+        market research. The pages answer two
+        questions: "which names need attention today?" and "has this setup actually worked before?" The signals
+        methodology used here was designed by Opus 5.5.</p>
+
+      <div class="stats">
+        <div><b>33 <i>symbols</i></b><span>two years of daily bars</span></div>
+        <div><b>21 <i>signals</i></b><span>scored against base rates</span></div>
+        <div class="mix">
+          <b>3 <i>data apps</i></b><b>2 <i>dashboards</i></b>
+          <b>1 <i>notebook</i></b><b>2 <i>saved insights</i></b>
+        </div>
+        <div><b>~1.2k <i>lines</i></b><span>of Malloy</span></div>
+      </div>
+
+      <p><code>market.malloy</code> holds the raw fact tables. <code>signals.malloy</code> is the experiment: one row
+        per
+        symbol
+        per session with every causal feature, forward returns as labels, one row per signal firing with the base rate
+        it's judged against, and a verdict of <i>Holds</i>, <i>Inverts</i>, <i>Noise</i> or <i>Thin</i>.</p>
+
+      <figure class="wide">
+        <img src="img/sr-screener.png" alt="Screener page">
+        <figcaption><b>Screener</b> — the morning's front-page: a tape of six benchmark funds, the market regime and
+          breadth,
+          a performance map grouped by theme, and every signal that fired on the latest session next to its two-year
+          record.</figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/sr-ticker.png" alt="Ticker page for GOOGL">
+        <figcaption><b>Ticker</b> — a terminal filtered down to one symbol. Candles with SMA 20/50/200, volume and RSI,
+          with signal
+          firings marked on the chart. Clicking a row in the <i>Signal record</i> isolates that signal's firings, scored
+          against this symbol's own history.</figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/sr-lab.png" alt="Signal Lab page">
+        <figcaption><b>Signal Lab</b> — configure the population (universe, symbol, regime, start date), read the
+          scorecard,
+          and drill into individual signals. Each tile is reactive to the top-level configuration inputs, so it can be
+          used to interactively explore the signals' behavior across different populations and regimes.</figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/sr-finding.png" alt="Saved finding: in a risk-on tape, breakdowns got bought">
+        <figcaption><b>A saved finding.</b> With SPY above its 200-day, a close below the prior 20-session low on the
+          27 stocks was followed by a five-session return 2.29 points above base (t 2.9, 206 firings), and 3%+ gaps
+          reverted in both directions. The written finding is pinned to the data at save-time; the chart re-runs live
+          when opened.</figcaption>
+      </figure>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="teardown"><span class="num">05</span>Unboxing takeaways: what the examples taught me</h2>
+
+      <p>In the original projects these example packages are based on, the data modeling logic lives in code that the
+        consumer can't easily re-use:
+        an SQL export script in
+        one, application TypeScript in the other. As Publisher packages, every rule is a named Malloy field with
+        <code>#(doc)</code> annotations for additional context. That covers the half-PPR scoring, finish ranks, value
+        over replacement, line-implied wins,
+        Cutler RSI, base rates, and signal verdicts. A person can read them, an agent can query them, and dashboards,
+        notebooks, and data apps all reuse them directly.
+      </p>
+
+      <p>I was genuinely impressed by how easy it was to build and iterate on these examples, it was a joy to work with
+        the
+        Publisher SDK and the Malloy compiler. Most of my work was done via Cursor using Opus 5.5.</p>
+
+      <h3>Concepts worth exploring more</h3>
+      <ul>
+        <li><b>Add object metadata specification beyond annotations.</b> Structured configuration details like group
+          labels, tags, value formatting, and more are hard to leverage when stored only as text-based annotations in
+          the
+          model code. Labels in particular are sometimes relative to their usage context:
+          <code>teams.full_name</code> is
+          defined once with <code># label="Team"</code>, but <code>games</code> joins <code>teams</code> twice, as
+          <code>home</code> and <code>away</code>, and <code>team_games</code> joins it again as
+          <code>opponent_team</code>. Explored from <code>teams</code> itself, that field is just "Team"; on the
+          foreign side of the join, a query-building UI should easily support showing "Home Team", "Away Team", or
+          "Opponent" rather than three
+          identical "Team" entries.
+        </li>
+        <li><b>Add a "drill" convention for data apps.</b> Support a way for data apps to easily link to the specific
+          query in explorer UI that produced a visualization or number. Potentially: document and wrap the Console's
+          <code>?query=</code> link (a <code>Publisher.exploreUrl(model,
+          query)</code>
+          helper, and sample code block in data app design skill), so data apps can link to their queries the way
+          dashboards and notebooks already do.
+        </li>
+        <li><b>One scoped source file per page.</b> <code>*_app.malloy</code> declares only the givens that page sends,
+          so a page can't reach for a parameter it doesn't own.</li>
+        <li><b>Keep page state in the URL.</b> Season, position, player, symbol and signal all live in the query string,
+          so any view can be shared as a link.</li>
+        <li><b>Prefer design tokens applied at runtime.</b> Every color comes from <code>style.css</code>, and the
+          charts read
+          the same tokens, so no page script contains a color.</li>
+        <li><b>Add an "insight" content primitive.</b> A versioned snapshot of a data app is defined by an
+          <code>app.json</code> manifest relating
+          a text-based description or claim and its
+          supporting queries to a templatized data app. See part 2 for more details.
+        </li>
+      </ul>
+
+      <table>
+        <tr>
+          <th>Friction</th>
+          <th>What happened</th>
+          <th>Directional fix</th>
+        </tr>
+        <tr>
+          <td>Explorer UI assumes Malloy, Looker background</td>
+          <td>The Fields builder is a Looker-style query builder: you need to know a group-by from an aggregate, and
+            that a
+            chart tag goes on the view. Not much prevents you from malforming a query or producing an invalid chart.
+          </td>
+          <td>Question mode</td>
+        </tr>
+        <tr>
+          <td>Shared data app code</td>
+          <td>Both packages carry their own <code>table.js</code>, <code>charts.js</code> and <code>format.js</code>,
+            mostly the same code.</td>
+          <td>Versioned, reusable components (tables, charts, formatters) served alongside
+            <code>/sdk/publisher.js</code>,
+            plus scaffold templates built on them; component and plug-in packages a package can declare as
+            dependencies.
+          </td>
+        </tr>
+        <tr>
+          <td>Edits that don't show up</td>
+          <td>Three different causes make a saved edit look like it did nothing. Unless the server was started in watch
+            mode, it serves a copy of each package from <code>publisher_data/</code>, so edits to
+            <code>examples/</code>, <code>public/</code> are ignored. A reload that fails to compile keeps serving the
+            previous model's numbers. The server tracks
+            both (<code>/watch-mode/status</code>, and <code>loadErrors</code> with <code>stale: true</code>), and an
+            agent sees them through <code>get_status</code>, but the Console shows neither.
+          </td>
+          <td>"Development mode" hints in the Console when local updates are detected: serving from source or from a
+            copy, the last compile result, and a
+            stale banner on every page that reads from that package</td>
+        </tr>
+        <tr>
+          <td>Givens field bindings are not structured in the model metadata</td>
+          <td>A given is declared model-wide and reaches a field only through a <code>where:</code> such as
+            <code>category ~ $CATEGORY</code>. The compiler keeps that clause, given reference included, but the
+            model metadata Publisher serves lists only the given's name, type, and control tags, never the clauses
+            that use it. So each surface rebuilds the binding on its own. Question mode runs a regex over the raw text
+            of the one model file, which misses clauses in imported files, can't tell which source a clause belongs
+            to, and falls back to guessing a field from the given's <code>suggest</code> dimension or its name. The
+            dashboard builder re-parses the dashboard
+            file in the browser. The Fields builder's query format has no way to hold a <code>$GIVEN</code>
+            reference, so opening a given-filtered query in Fields drops that filter.
+          </td>
+          <td>Serve each source's and view's given-bound filters (field, operator, given) in the model metadata,
+            read from the compiled model, so the explorer and dashboards stop parsing text. Separately, add a
+            given-reference value to Malloy's query format so Fields can keep the filter.</td>
+        </tr>
+      </table>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="question"><span class="num">06</span>Proposal: Question mode</h2>
+      <p class="lede">A new way to build a query in the model explorer. The user answers questions instead of picking
+        fields, and every combination of answers produces a valid chart.</p>
+
+      <h3>The problem</h3>
+      <p>The explorer's Fields mode resembles a traditional query builder. You pick a source, then
+        click to add dimensions,
+        add measures, add filters, and choose a renderer. For an analyst familiar with Malloy concepts, that
+        is the right tool. For a manager, a PM, or someone who opened the Console from a link, it hands over a grammar
+        before it hands over an answer. Most of the combinations it allows produce a table or an invalid chart.</p>
+      <p>Future work should explore minor design treatments that might make Fields content more accessible and
+        discoverable. For example, expanding all groups in the tree by default, and removing flex-grow conditions that
+        push sections to the bottom of the screen. It took my eyes way too long to figure out how to change the chart
+        type
+        away from the table type when picking fields manually. Clearing the query doesn't remove the results table, so
+        it's not clear how to get back to the bookmarked view UI without refreshing the page.</p>
+
+      <figure class="wide">
+        <img src="img/question-0-fields.png" alt="The Fields builder">
+        <figcaption><b>Fields mode, today.</b> 24 dimensions, 12 measures and 15 views in a tree; a query panel
+          containing slots for
+          group-by, aggregate, order-by and limit fields; and a saved list of bookmarked views. From this screen
+          everything
+          is
+          possible, but
+          it can be daunting to figure out where to start.</figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/question-0b-fields-table.png"
+          alt="Fields mode with revenue, category and region selected, rendered as a table">
+        <figcaption><b>Revenue by category and region, picked in Fields.</b> One measure and two dimensions is a
+          natural stacked-bar question, but the renderer defaults to <i>Table</i>: a long list of category–region
+          pairs to scan by eye. Getting a chart means knowing to open the renderer menu and pick one.</figcaption>
+      </figure>
+
+      <h3>The design</h3>
+      <p>Question mode reduces the explorer to three questions, asked in order, each unlocked in sequence:</p>
+      <ol class="steps">
+        <li><b>What would you like to measure?</b> Pick a measure, grouped
+          by source label and listed by its field label. With nothing else answered yet, you get one big, beautiful
+          number.
+          Add it to a
+          dashboard as a KPI tile, start a new notebook from here, or send the link to chat to share live data context.
+        </li>
+        <li><b>What would you like to group by?</b> Optional. We
+          assume a categorical group-by dimension produces a
+          ranked bar
+          chart with a
+          top-N control. A
+          date or timestamp implies a time series, with a grain picker (year through day) that only appears when it
+          can be applied.</li>
+        <li><b>What would you like to segment by?</b> Optional, and only after a group-by has been selected. It splits
+          each group into
+          series: stacked bars, or one line per segment.</li>
+      </ol>
+      <p>The principle is that <b>every input yields a valid visualization</b>. The chart is chosen
+        deterministically
+        based on the metadata of the fields that were selected, so
+        all user inputs should produce valid charts rather than flat tables. <i>Show it as</i> defaults to <b>Auto</b>,
+        which you can override
+        manually.
+      </p>
+
+      <table>
+        <tr>
+          <th>Answers</th>
+          <th>Auto draws</th>
+          <th>Ordering</th>
+        </tr>
+        <tr>
+          <td>measure only</td>
+          <td>KPI card</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>+ text group-by</td>
+          <td>bar chart</td>
+          <td>by the measure, descending, top N</td>
+        </tr>
+        <tr>
+          <td>+ date/time group-by</td>
+          <td>line chart</td>
+          <td>by time, ascending, all rows</td>
+        </tr>
+        <tr>
+          <td>+ segment</td>
+          <td>stacked bar / multi-line</td>
+          <td>as above; top N groups kept whole</td>
+        </tr>
+        <tr>
+          <td>one text group-by, no segment</td>
+          <td><i>Map</i> available (shape map)</td>
+          <td>every region, unranked</td>
+        </tr>
+      </table>
+
+      <figure class="wide">
+        <img src="img/question-1-empty.png" alt="Question mode, empty">
+        <figcaption><b>Empty state.</b> The first question is active, and the later ones are dimmed until there is
+          something to group.</figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/question-1b-dropdown.png" alt="Question mode: the measure dropdown, open">
+        <figcaption><b>The picker.</b> Each question opens a searchable list grouped by source. An entry shows the
+          field's <code># label</code> with its model name under it, so you can pick by the plain-English name and
+          still
+          see which underlying field was used.</figcaption>
+      </figure>
+
+
+      <figure class="wide">
+        <img src="img/question-2-measure.png" alt="Question mode: one measure">
+        <figcaption><b>1 · Measure.</b> "Revenue" with nothing else answered is one number. The UI indicates its
+          choice:
+          <i>Auto (big value)</i>.
+        </figcaption>
+      </figure>
+      <figure class="wide">
+        <img src="img/question-3-group.png" alt="Question mode: grouped by category">
+        <figcaption><b>2 · Group by.</b> "Category" gives a ranked bar chart and a Top-N control. A value filter for
+          the chosen field appears under <i>Filters on your fields</i>.</figcaption>
+      </figure>
+      <figure class="wide">
+        <img src="img/question-4-segment.png" alt="Question mode: segmented by region">
+        <figcaption><b>3 · Segment by.</b> "Region" stacks the bars. <i>Map</i> is disabled with a tooltip, because a
+          shape map needs one grouping and no segment.</figcaption>
+      </figure>
+      <figure class="wide">
+        <img src="img/question-5-temporal.png" alt="Question mode: time series">
+        <figcaption><b>Change the group-by to a date.</b> "Created at" switches the chart to lines, adds the <i>By
+            month</i> grain picker, and hides Top-N, since a time series isn't ranked.</figcaption>
+      </figure>
+
+      <h3>Filters next to the fields they filter</h3>
+      <p>Fields mode lists every given in one flat panel. Question mode works out which field each given filters and
+        puts it next to that field. It looks, in order, for:</p>
+      <ol>
+        <li>a binding in the model, like <code>where: category ~ $CATEGORY</code> in a dashboard tile;</li>
+        <li>the given's <code>suggest</code> dimension;</li>
+        <li>a field with the same name as the given.</li>
+      </ol>
+      <p>The filters then land in three groups:</p>
+      <ul>
+        <li><b>Filters on your fields:</b> givens for your group-by or segment, plus a value filter for any chosen text
+          field without one.</li>
+        <li><b>More filters on <i>source</i>:</b> collapsed by default. They still apply when set, which the UI notes.
+        </li>
+        <li><b>Other parameters:</b> givens tied to no field. They're sent with the query, and only matter if the source
+          reads them.</li>
+      </ul>
+
+      <h3>It's still Malloy</h3>
+      <p>Your answers become a plain Malloy query, and the SQL tab shows the SQL it compiles to. The stacked chart
+        above is:</p>
+      <pre><span class="c"># bar_chart.stack</span>
+<span class="k">run:</span> order_items -&gt; {
+  <span class="k">group_by:</span> category, region
+  <span class="k">aggregate:</span> total_sales
+  <span class="k">order_by:</span> total_sales desc
+  <span class="k">limit:</span> 400   <span class="c">// top 20 categories × up to 20 segments each</span>
+}</pre>
+      <p>A set filter adds a line like <code>where: category ~ $CATEGORY</code>. Question mode adds it only when the
+        given has a value or a default, so an unset filter can't break the query. (The Malloy query AST can't express
+        <code>$GIVEN</code> bindings, which is why Question mode writes query text instead.)
+      </p>
+
+      <h3>Round-trip with Fields</h3>
+      <p>Switching modes keeps the query. Question mode's answers become a Fields AST, and a Fields query becomes
+        answers, including a named view, which is expanded from the compiler's <code>drill_expression</code> and
+        <code>drill_filters</code> annotations. A Fields query can say more than three questions can (a second measure,
+        a nest, a <code>having</code>). When it does, Question mode lists what it couldn't carry instead of dropping it
+        silently: <i>"Not carried over from Fields: the extra measure Margin rate; the nested view by_month."</i>
+      </p>
+
+      <figure class="wide">
+        <img src="img/question-6-back-to-fields.png" alt="Back in Fields mode with the question's query">
+        <figcaption><b>Back to Fields.</b> Selecting "Fields" mode shows that the question is just an ordinary query:
+          group-by <code>created month</code>
+          and
+          <code>region</code>, aggregate <code>total_sales</code>, order by <code>created month</code> ascending,
+          rendered as a line chart.
+          An analyst can pick up exactly where the question left off.
+        </figcaption>
+      </figure>
+
+      <h3>Who it's for</h3>
+      <table>
+        <tr>
+          <th>Persona</th>
+          <th>Fields</th>
+          <th>Question</th>
+        </tr>
+        <tr>
+          <td>Analyst / modeler</td>
+          <td>Uses this by default. Full grammar, nests, multiple measures</td>
+          <td>A fast first draft to refine in Fields mode later. Prefers to use this when sharing a link to colleagues
+          </td>
+        </tr>
+        <tr>
+          <td>Manager / PM</td>
+          <td>Aspires to use this comfortably</td>
+          <td>Can't mess this up, gets a chart every time and learns about the data</td>
+        </tr>
+        <tr>
+          <td>Arrived from a link or a dashboard</td>
+          <td>Doesn't know which source or view to use</td>
+          <td>Starts from the fields they came to ask about</td>
+        </tr>
+        <tr>
+          <td>Agent-assisted</td>
+          <td>Less optimized for computer-use agents</td>
+          <td>The three slots match how <code>get_context</code> retrieval is already typed (measure, dimension). Should
+            likely prefer to share self-serve analytics answers built from model catalog this way.</td>
+        </tr>
+      </table>
+
+      <h3>Prototype implementation</h3>
+      <ul>
+        <li><code>packages/sdk/src/components/Model/Question/</code>: <code>questionQuery.ts</code> (fields, bindings,
+          Malloy text), <code>interchange.ts</code> (Fields ↔ Question), <code>QuestionPanel.tsx</code> (the form).
+          About 1,700 lines, plus 24 unit tests in two spec files.</li>
+        <li>The <code>Fields | Question</code> toggle in <code>ModelExplorer.tsx</code>, remembered in
+          <code>localStorage</code>. Question mode runs 350 ms after the last answer and automatically discards stale
+          results.
+        </li>
+        <li>No server change. It uses the existing query endpoint and the existing givens.</li>
+      </ul>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="experiment"><span class="num">07</span>Experiment: a cold start from an existing repo</h2>
+      <p class="lede">Everything above started inside the Publisher repo. A real user is more likely to start from
+        their own repo, with an agent doing almost everything. So I tried that too.</p>
+
+      <p>A fresh agent session took my existing <code>obj-football-pbp</code> project, an NFL play-by-play dataset with
+        its own
+        Malloy model, stood it up as a Publisher workspace, built no-code dashboards on it, and wrote an experience
+        report. It had only what a new user likely brings: tokens to spend and a lazy prompt asking the AI to figure out
+        how to
+        use Malloy Publisher to build dashboards.
+      </p>
+
+      <div class="stats">
+        <div><b>~1 <i>hour</i></b><span>of agent time, start to finish</span></div>
+        <div><b>2 <i>dashboards</i></b><span>team offense 2023–25, 2026 market outlook</span></div>
+        <div><b>4 <i>files</i></b><span>one model, one index, two dashboards</span></div>
+        <div><b>0 <i>errors</i></b><span>or warnings at the end</span></div>
+      </div>
+
+      <h3>What worked</h3>
+      <ul>
+        <li><b>Docs and skills written for agents.</b> Both dashboards were built from them with no trial and error on
+          the dashboard format.</li>
+        <li><b>The scaffolder.</b> One command produced a working workspace.</li>
+        <li><b>Dashboards are plain <code>.malloy</code> files.</b> The Console's drag-and-drop editor edits the same
+          file, so there's no separate layout to keep in sync.</li>
+        <li><b>The existing model ported almost unchanged</b>, needing only labels, formats, and a few chart-shaped
+          views.</li>
+        <li><b>Most errors say how to fix them</b>, like the reserved-word message for <code>WEEK</code>.</li>
+        <li><b>Everything can be checked over REST</b>, without a browser.</li>
+      </ul>
+
+      <h3>What got in the way</h3>
+      <table>
+        <tr>
+          <th>Friction</th>
+          <th>What happened</th>
+          <th>Directional fix</th>
+        </tr>
+        <tr>
+          <td>Port collisions</td>
+          <td>The new server took 4000, failed on 4040, and exited. The first status check reached another Publisher
+            and returned a misleading 404.</td>
+          <td>Check both ports before binding either</td>
+        </tr>
+        <tr>
+          <td>Reserved words, two ways</td>
+          <td>A filter named <code>WEEK</code> got a clear message. A column named <code>week</code> got a parser error
+            plus eight follow-on errors.</td>
+          <td>The same quote-it message for columns</td>
+        </tr>
+        <tr>
+          <td>No MCP</td>
+          <td>An agent that starts the server can't connect to its MCP tools, so it used REST and the MCP features went
+            untested.</td>
+          <td>Let an agent start the server and still use MCP</td>
+        </tr>
+        <tr>
+          <td>Silent failures</td>
+          <td>Many are covered only in the docs, rather than caught as errors or warnings.</td>
+          <td>Promote them to compile errors or load warnings</td>
+        </tr>
+        <tr>
+          <td>Number filters</td>
+          <td>No dropdown, so <code>season</code> only gets a slider.</td>
+          <td>Dropdowns for low-cardinality numbers</td>
+        </tr>
+        <tr>
+          <td>Data copied twice</td>
+          <td>Into the package, then into <code>publisher_data/</code>.</td>
+          <td>Reference an external data directory</td>
+        </tr>
+        <tr>
+          <td>Slow first start</td>
+          <td>About 20 seconds with <code>npx</code>.</td>
+          <td>Pin and install once</td>
+        </tr>
+        <tr>
+          <td>Drill on click</td>
+          <td>Didn't fire in the automated browser.</td>
+          <td>Check synthetic pointer events</td>
+        </tr>
+      </table>
+
+      <h3>What could be optimized</h3>
+      <ul>
+        <li><b>Shared tile filters.</b> Every tile repeats the same <code>where:</code> clause; a shorthand would cut
+          the boilerplate, and the tile that silently ignores a filter because someone forgot it.</li>
+        <li><b>A one-call dashboard check</b> that runs every tile and reports row counts and errors.</li>
+        <li><b>The agent's own process.</b> Skipping compile-before-save cost two extra fix rounds. It also missed that
+          <a href="#football"><code>questionable-football</code></a> is built on the same dataset and would have been
+          a faster start.
+        </li>
+      </ul>
+
+      <h3>What the agent learned</h3>
+      <p>The agent expected a query language with notebooks, where dashboards meant writing a React or HTML app.
+        Instead,
+        dashboards are built in and declared in Malloy; givens are typed parameters whose type picks the control; and
+        access control, persistence, and MCP are part of the product. The catch: dashboard tags are checked far less
+        strictly than the model.</p>
+      <p>Against comparable tools (from memory, not web researched), Rill and Evidence.dev are closest on "no code,
+        files
+        in git, local DuckDB," and Cube, Looker, Omni, Snowflake, and the dbt Semantic Layer on "governed semantic layer
+        an agent
+        can
+        query."
+        Publisher is the only one it knew of that does both in one file format.</p>
+
+
+
+      <!-- <h3>Reproducing the screenshots</h3>
+      <p>Run <code>bun run start</code> and <code>bun run start:dev:react</code>, then
+        <code>node docs/unboxing/capture.mjs</code> for the apps and prior art, and
+        <code>node docs/unboxing/capture-question.mjs</code> for the Question walkthrough. Both scripts write to
+        <code>docs/unboxing/img/</code>.
+      </p> -->
+
+      <div class="series-foot">
+        <div class="label">Up next</div>
+        <a class="card" href="credible-demo.html">
+          <span class="eyebrow">Part 2 of 2 →</span>
+          <span class="title">Credible demo workspace: a front door for Publisher</span>
+          <span class="blurb">Where the packages above end up: a Library that starts full of content, a Publish button
+            in the
+            Console, autonomous AI insights, chat answers that save back into their package, and a workspace that feels
+            like home.</span>
+        </a>
+        <div class="colophon">Publisher unboxing · Part 1 of 2 · Noah Mac · Sept 28 - Oct 1, 2026</div>
+      </div>
+    </main>
+  </div>
+</body>
+
+</html>

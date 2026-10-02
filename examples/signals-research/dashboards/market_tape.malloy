@@ -1,0 +1,56 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// The market tape as a no-code dashboard: breadth, relative performance and
+// the latest-session screener for every symbol, the pre-market glance
+// public/index.html draws with more density.
+##! experimental.givens
+
+##" Where the tape stands on its latest session. **Breadth** is the share of
+##" the 33 symbols in an uptrend (close above a rising 50-over-200-day
+##" stack) and above their 200-day average.
+##"
+##" **Relative performance** rebases every symbol to 100 at the first session
+##" in the data (or its listing day), so a stock near $9 and one near $1,700
+##" share a scale.
+## artifact { title="Market tape" tiles=["tape -> breadth_strip", "tape -> performance", "tape -> volatility", "tape -> board"] } dashboard { columns=12 }
+import { securities } from "../market.malloy"
+import { sessions, symbol_suggest } from "../signals.malloy"
+
+# description="One or more themes (AI compute, Memory, Software...). Leave empty for all"
+# label="Theme" control=multiselect suggest { source=securities dimension=theme }
+given: THEME :: filter<string> is f''
+
+# description="Equity for the 27 stocks, ETF for the 6 benchmark funds"
+# label="Universe" control=select suggest { source=securities dimension=asset_class }
+given: UNIVERSE :: filter<string> is f''
+
+# description="One or more symbols. Leave empty for all"
+# label="Symbol" control=multiselect suggest { query=symbol_suggest dimension=symbol }
+given: SYMBOL :: filter<string> is f''
+
+# description="First session the performance and volatility tiles cover"
+# label="Since"
+given: SINCE :: date is @2024-09-30
+
+#(doc) The market tape dashboard's tiles, each over the sessions its controls select
+source: tape is sessions extend {
+  # colspan=12
+  # label="Breadth"
+  # big_value
+  view: breadth_strip is breadth + { where: asset_class ~ $UNIVERSE, where: theme ~ $THEME, where: symbol ~ $SYMBOL }
+
+  # colspan=8
+  # break
+  # label="Relative performance"
+  view: performance is relative_performance + { where: asset_class ~ $UNIVERSE, where: theme ~ $THEME, where: symbol ~ $SYMBOL, where: session_date >= $SINCE }
+
+  # colspan=4
+  # label="Realized volatility"
+  view: volatility is volatility_by_symbol + { where: asset_class ~ $UNIVERSE, where: theme ~ $THEME, where: symbol ~ $SYMBOL, where: session_date >= $SINCE }
+
+  # colspan=12
+  # break
+  # label="Screener"
+  view: board is screener + { where: asset_class ~ $UNIVERSE, where: theme ~ $THEME, where: symbol ~ $SYMBOL }
+}

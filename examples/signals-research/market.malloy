@@ -1,0 +1,211 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// Signals research — the raw market tables, one source per grain.
+//
+// Everything here is a thin, documented read of a file in data/, extracted from
+// a Folio workspace's market-data cache (scripts/extract-folio-data.mjs): two
+// years of daily bars for 27 stocks and 6 ETFs (AI compute, memory, software
+// and the index, semiconductor and volatility funds that frame them), the per-
+// session options flow, dealer greek exposure and implied volatility behind
+// Folio's SignalForge features, earnings, one screener snapshot, and Folio's
+// own records and diary for the symbols it tracks.
+//
+// Indicators, signals and forward returns are NOT here. They need window
+// functions, so they live in signals.malloy, which reads these same files.
+// This file is what an analyst reaches for to check a number against the raw
+// rows it came from.
+
+## theme.palette.series = ["#2563eb", "#16a34a", "#dc2626", "#d97706", "#7c3aed", "#0891b2"]
+
+#(doc) The 33 securities under research: 27 stocks, each with a hand-assigned theme (AI compute, Memory, Software and so on), and 6 ETFs that frame them (SPY, QQQ, IWM, SMH, DRAM, UVIX). Stage, conviction and thesis are filled only for the symbols Folio's diary tracks. One row per symbol
+source: securities is duckdb.table('data/securities.csv') extend {
+  primary_key: symbol
+  dimension:
+    #(doc) Equity for a stock, ETF for a benchmark fund
+    # label="Asset class"
+    asset_class_label is asset_class
+    #(doc) True for a symbol Folio's diary tracks, with a stage, conviction and thesis
+    # label="Tracked in Folio"
+    is_tracked is conviction is not null
+  measure:
+    #(doc) Distinct securities
+    # label="Securities"
+    security_count is count()
+    #(doc) Average conviction (1 to 5) over the securities that have one
+    # number="#,##0.0"
+    # label="Avg conviction"
+    avg_conviction is conviction.avg()
+}
+
+#(doc) Daily regular-session OHLCV bars, one row per symbol per session, from September 2024 through September 2026. Recent listings start at their first session: SNDK in February 2025, DRAM in April 2026, CBRS in May, SPCX in June and SKHY in July
+source: daily_bars is duckdb.table('data/daily_bars.parquet') extend {
+  join_one: securities with symbol
+  measure:
+    #(doc) Sessions (bars) counted
+    # label="Sessions"
+    session_count is count()
+    #(doc) Shares traded
+    # number="#,##0"
+    # label="Volume"
+    total_volume is volume.sum()
+    #(doc) Dollar volume, close times shares traded
+    # currency
+    # label="Dollar volume"
+    dollar_volume is sum(close * volume)
+    #(doc) First session in the selection
+    # label="First session"
+    first_session is session_date.min()
+    #(doc) Last session in the selection
+    # label="Last session"
+    last_session is session_date.max()
+}
+
+#(doc) The latest session's 5-minute bars for every symbol, one row per symbol per bar
+source: intraday_bars is duckdb.table('data/intraday_bars.parquet') extend {
+  join_one: securities with symbol
+  measure:
+    #(doc) Volume-weighted average price over the bars selected
+    # currency
+    # label="VWAP"
+    vwap is sum(close * volume) / nullif(volume.sum(), 0)
+    #(doc) Shares traded
+    # number="#,##0"
+    # label="Volume"
+    total_volume is volume.sum()
+  #(doc) The session's price path, bar by bar
+  # line_chart
+  view: session_path is {
+    group_by:
+      # label="Time (UTC)"
+      bar_time
+    aggregate:
+      # currency
+      # label="Close"
+      last_close is close.max()
+    order_by: bar_time
+  }
+}
+
+#(doc) Per-session options activity for every symbol: volume, premium, bid/ask side and open interest. Totals settle at the close
+source: options_flow is duckdb.table('data/options_flow.parquet') extend {
+  join_one: securities with symbol
+  measure:
+    #(doc) Contracts traded, calls plus puts
+    # number="#,##0"
+    # label="Options volume"
+    options_volume is sum(call_volume + put_volume)
+    #(doc) Put volume over call volume. Above 1 means more puts than calls traded
+    # number="#,##0.00"
+    # label="Put/call"
+    put_call_ratio is put_volume.sum() / nullif(call_volume.sum(), 0)
+    #(doc) Premium paid for calls and puts
+    # currency
+    # label="Premium"
+    total_premium is sum(call_premium + put_premium)
+    #(doc) Net call premium minus net put premium: positive when flow leaned bullish
+    # currency
+    # label="Net premium"
+    net_premium is sum(net_call_premium - net_put_premium)
+    #(doc) Share of call volume that traded at the ask, a proxy for calls being bought rather than sold
+    # percent
+    # label="Calls at ask"
+    call_ask_share is call_volume_ask_side.sum() / nullif(sum(call_volume_ask_side + call_volume_bid_side), 0)
+}
+
+#(doc) Per-session aggregate dealer greek exposure for every symbol (calls and puts separately), set at the open from the prior day's open interest
+source: greek_exposure is duckdb.table('data/greek_exposure.parquet') extend {
+  join_one: securities with symbol
+  dimension:
+    #(doc) Net gamma exposure, calls plus puts. Positive means dealers are long gamma and tend to damp moves
+    # number="#,##0"
+    # label="Net gamma"
+    net_gamma is call_gamma + put_gamma
+    #(doc) Long gamma when net gamma is at or above zero, short gamma below it
+    # label="Gamma regime"
+    gamma_regime is pick 'Long gamma' when net_gamma >= 0 else 'Short gamma'
+  measure:
+    #(doc) Sessions where net dealer gamma was negative, as a share of sessions
+    # percent
+    # label="Short-gamma share"
+    short_gamma_share is count() { where: net_gamma < 0 } / nullif(count(), 0)
+}
+
+#(doc) Per-session 30-day implied volatility, its 1-year rank, and 21-day realized volatility for every symbol. IV rank covers the last year only. Realized vol is filed on the session its window ended
+source: volatility is duckdb.table('data/volatility.parquet') extend {
+  join_one: securities with symbol
+  measure:
+    #(doc) Average 30-day implied volatility
+    # percent
+    # label="IV 30d"
+    avg_iv is iv_30d.avg()
+    #(doc) Average 21-day realized volatility
+    # percent
+    # label="RV 21d"
+    avg_rv is rv_21d.avg()
+    #(doc) Average implied minus realized volatility: the premium option buyers paid over what the stock delivered
+    # percent
+    # label="IV − RV"
+    avg_vol_premium is avg(iv_30d - rv_21d)
+}
+
+#(doc) Quarterly earnings reports: estimate, actual, surprise and the options-implied move, plus each stock's next scheduled report. One row per symbol per report date
+source: earnings is duckdb.table('data/earnings.parquet') extend {
+  join_one: securities with symbol
+  dimension:
+    #(doc) Beat when actual EPS came in above the estimate, Miss below it, Inline when equal
+    # label="Result"
+    result is pick 'Beat' when surprise_pct > 0 pick 'Miss' when surprise_pct < 0 pick 'Inline' when surprise_pct = 0 else null
+  measure:
+    #(doc) Reports counted
+    # label="Reports"
+    report_count is count()
+    #(doc) Share of reported quarters with a positive EPS surprise
+    # percent
+    # label="Beat rate"
+    beat_rate is count() { where: surprise_pct > 0 } / nullif(count() { where: surprise_pct is not null }, 0)
+    #(doc) Average options-implied earnings move, in percent of price
+    # number="#,##0.0"
+    # label="Implied move %"
+    avg_expected_move is expected_move_pct.avg()
+  #(doc) The next scheduled report for each stock, with the move options are pricing
+  view: upcoming is {
+    where: is_upcoming
+    group_by:
+      # label="Symbol"
+      symbol
+      # label="Report date"
+      report_date
+      # label="Timing"
+      timing is pick 'Before open' when is_premarket else 'After close'
+    aggregate:
+      # number="#,##0.0"
+      # label="Implied move %"
+      implied_move is expected_move_pct.max()
+      # number="#,##0.00"
+      # label="EPS estimate"
+      estimate is eps_estimate.max()
+    order_by: report_date
+  }
+}
+
+#(doc) One screener snapshot per symbol from the latest session: price, 52-week range, relative volume, RSI, ATR, moving averages, IV, expected move, market cap and next earnings, as Folio's quote screen showed it
+source: screener_snapshot is duckdb.table('data/screener_snapshot.parquet') extend {
+  primary_key: symbol
+  join_one: securities with symbol
+}
+
+#(doc) The trading diary: notes, ideas, trades and reviews, each optionally about one symbol
+source: journal is duckdb.table('data/journal.parquet') extend {
+  primary_key: entry_id
+  join_one: securities with symbol
+  measure:
+    #(doc) Diary entries
+    # label="Entries"
+    entry_count is count()
+}
+
+#(doc) The signal definitions the research tests: id, plain-English rule, family, style and the direction its classic reading expects. One row per signal
+source: signal_catalog is duckdb.table('data/signal_catalog.csv') extend {
+  primary_key: signal_id
+}

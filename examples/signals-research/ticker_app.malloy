@@ -1,0 +1,62 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// The sources public/ticker.html queries: everything about ONE symbol.
+//
+// The symbol is a given, not text pasted into a query, so whatever a reader
+// types into the URL (`?symbol=…`) is bound by the server as a typed string
+// and compared, never parsed as Malloy. A symbol the data does not have
+// returns empty tiles rather than an error, which the page says in words.
+//
+// This file declares only the givens the ticker page sends. Givens are per
+// file, and the server refuses a given the model does not declare, so each
+// page in public/ gets a model of its own rather than one file with every
+// page's parameters in it.
+##! experimental.givens
+// Both files: an import is not transitive, and the raw tables (securities,
+// earnings, journal, intraday bars) are declared in market.malloy.
+import "market.malloy"
+import "signals.malloy"
+
+# description="The symbol the page is about"
+# label="Symbol" control=select suggest { query=symbol_suggest dimension=symbol }
+given: TICKER :: string is 'NVDA'
+
+# description="First session the price and positioning charts show"
+# label="Chart from"
+given: CHART_FROM :: date is @2025-09-29
+
+#(doc) The chosen symbol's sessions from the chart start: bars, SMAs, RSI and positioning
+source: ticker_sessions is sessions extend {
+  where: symbol = $TICKER and session_date >= $CHART_FROM
+}
+
+#(doc) The chosen symbol's latest session, for the quote header and the key-figures strip
+source: ticker_latest is sessions extend {
+  where: symbol = $TICKER and is_latest_session
+}
+
+#(doc) Every signal that fired on the chosen symbol, over the whole history, so its record is not limited to the chart window
+source: ticker_events is signal_events extend {
+  where: symbol = $TICKER
+}
+
+#(doc) The chosen symbol's security record: name, sector, theme, stage, conviction, lists and thesis
+source: ticker_security is securities extend {
+  where: symbol = $TICKER
+}
+
+#(doc) The chosen symbol's earnings reports, newest first
+source: ticker_earnings is earnings extend {
+  where: symbol = $TICKER
+}
+
+#(doc) The chosen symbol's diary entries
+source: ticker_journal is journal extend {
+  where: symbol = $TICKER
+}
+
+#(doc) The chosen symbol's latest-session 5-minute bars
+source: ticker_intraday is intraday_bars extend {
+  where: symbol = $TICKER
+}

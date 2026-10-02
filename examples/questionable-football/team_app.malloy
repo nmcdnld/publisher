@@ -1,0 +1,46 @@
+// Copyright (c) Credible Data Inc.
+// SPDX-License-Identifier: MIT
+
+// The sources public/teams.html queries for the team it has open. The league
+// board and the schedule grid above it read market.malloy directly; this file
+// is the side of the page that is about ONE team, chosen by `?team=…`.
+##! experimental.givens
+// All three: an import is not transitive. `team_games`, `plays` and the
+// `team_suggest` query live in football.malloy.
+import "football.malloy"
+import "market.malloy"
+import "fantasy.malloy"
+
+# description="The team's code, e.g. PHI"
+# label="Team" control=select suggest { query=team_suggest dimension=team }
+given: TEAM :: string is 'PHI'
+
+#(doc) The chosen team's 2026 futures beside its line-implied outlook and 2025 results
+source: team_card is team_outlook extend {
+  where: team = $TEAM
+}
+
+#(doc) The chosen team's 2026 slate, week by week, with the lines from its side
+source: team_slate is team_schedule_2026 extend {
+  where: team = $TEAM
+}
+
+#(doc) The chosen team's games, 2023-2025, for its season-by-season record
+source: team_record is team_games extend {
+  where: team = $TEAM
+}
+
+#(doc) The chosen team's offensive plays, 2023-2025: efficiency by season and by down
+source: team_offense is plays extend {
+  where: offense = $TEAM
+}
+
+#(doc) The chosen team's fantasy seasons, 2023-2025: who scored for it
+source: team_fantasy is player_seasons extend {
+  where: team = $TEAM
+}
+
+#(doc) The chosen team's players on the 2026 draft board
+source: team_board is draft_board extend {
+  where: team = $TEAM
+}

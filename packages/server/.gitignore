@@ -6,3 +6,4 @@ publisher.db
 publisher.db.wal
 publisher_data
 
+src/runtime/publisher-app.js
