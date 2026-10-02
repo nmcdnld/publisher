@@ -9,10 +9,12 @@ SPDX-License-Identifier: MIT
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Part 1 — Unboxing Publisher and adding Question mode</title>
-  <meta name="description" content="Two existing data projects rebuilt as Publisher packages, and a new way to ask a question in the explorer.">
+  <meta name="description"
+    content="Two existing data projects rebuilt as Publisher packages, and a new way to ask a question in the explorer.">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Unboxing Publisher and adding Question mode">
-  <meta property="og:description" content="Publisher unboxing, Part 1 of 2: two existing data projects rebuilt as Publisher packages, and a new way to ask a question in the explorer.">
+  <meta property="og:description"
+    content="Publisher unboxing, Part 1 of 2: two existing data projects rebuilt as Publisher packages, and a new way to ask a question in the explorer.">
   <meta property="og:url" content="https://nmcdnld.github.io/publisher/docs/unboxing/index.html">
   <meta property="og:image" content="https://nmcdnld.github.io/publisher/docs/unboxing/img/og-part1.png">
   <meta property="og:image:width" content="1200">
@@ -520,7 +522,7 @@ SPDX-License-Identifier: MIT
         <div class="kicker">Publisher unboxing · Part 1 of 2 · Example Packages and Question mode</div>
         <h1>Unboxing Publisher and adding Question mode</h1>
         <p class="dek">I rebuilt two of my existing data projects as Publisher packages, used them to learn more about
-          Publisher and its codebase, and added a new way to ask a question in the explorer.</p>
+          Publisher and its codebase, and added a new way to ask a question in the Console.</p>
         <div class="byline">Noah Mac · product + design engineering update · Sept 28 - Oct 1, 2026
         </div>
 
@@ -529,21 +531,22 @@ SPDX-License-Identifier: MIT
           <ul>
             <li><b>Two new example packages</b>, <code>questionable-football</code> and <code>signals-research</code>,
               rebuilt from <a href="https://data.questionablefootball.com">data.questionablefootball.com</a> and <a
-                href="https://stocks.palm-springs.ai">stocks.palm-springs.ai</a> on Publisher. Every number is defined
+                href="https://stocks.palm-springs.ai">stocks.palm-springs.ai</a> using Publisher. Every number is
+              defined
               in Malloy, not in an export script or in app code.</li>
             <li><b>I spent time with every surface:</b> HTML data apps, no-code dashboards, Malloy notebooks, and
               model code. Together that is about 3,000 lines of Malloy and 6,300 lines of HTML, JS and CSS. Opus 5.5 is
-              a beast!</li>
-            <li><b>Question mode</b> is a new way to build a query in the model explorer. The user builds a query by
+              a beast and Publisher flies with it!</li>
+            <li><b>Question mode</b> is a new way to build a query in the Explorer. The user builds a query by
               answering three questions
-              (measure, group by, segment by), and any combination of answers draws a valid chart. Switching to the
-              Fields builder keeps the query: all Question mode queries are starting points for what can be expressed in
-              the Fields mode builder.</li>
+              (measure, group by, segment by), and any combination of answers draws a valid chart. Switching to
+              Fields mode keeps the query: all Question mode queries are starting points for what can be expressed in
+              Fields mode.</li>
             <li><b>The teardown:</b> the model, the governed query path, and the agent workflow all work great
               (genuinely first-class). The
               friction
               was
-              in the first ten minutes (connecting MCP, reloading, stale models) and in the explorer, which assumes its
+              in the first ten minutes (connecting MCP, reloading, stale models) and in the Explorer, which assumes its
               user
               already thinks in Malloy or Looker.</li>
             <li><b><a href="#experiment">The experiment</a>:</b> a fresh agent, starting cold from another repo, built
@@ -599,7 +602,7 @@ SPDX-License-Identifier: MIT
         </tr>
         <tr>
           <td>Chat</td>
-          <td>The conversational client you bring (Claude, Cursor, Codex), connected over MCP (Publisher hosted). It
+          <td>The conversational client you bring (Claude, Cursor, Codex), connected to Publisher over MCP. It
             discovers and
             queries the other surfaces, and builds from them</td>
           <td>Anyone who would rather ask than click or write by hand</td>
@@ -620,7 +623,7 @@ SPDX-License-Identifier: MIT
         The following sections describe the two example packages I added to the repo, powered by Publisher. At the
         bottom of this document I reflect more on how I expect customers &amp; real world users to encounter these
         concepts,
-        and <a href="#experiment">run a simple experiment</a> that I'd like to continue.
+        and <a href="#experiment">run a simple experiment</a> that I'd like to continue exploring in a future update.
       </p>
 
       <!-- ─────────────────────────────────────────────── -->
@@ -804,7 +807,11 @@ SPDX-License-Identifier: MIT
 
       <p>I was genuinely impressed by how easy it was to build and iterate on these examples, it was a joy to work with
         the
-        Publisher SDK and the Malloy compiler. Most of my work was done via Cursor using Opus 5.5.</p>
+        Publisher SDK and the Malloy compiler. There are concepts I barely scratched the surface of, like nesting,
+        materializations, and more complex analyses leveraging sql-in-malloy (Turducken?!). I will definitely be back
+        for more. Most of my work was done via
+        Cursor using
+        Opus 5.5.</p>
 
       <h3>Concepts worth exploring more</h3>
       <ul>
@@ -848,7 +855,7 @@ SPDX-License-Identifier: MIT
           <th>Directional fix</th>
         </tr>
         <tr>
-          <td>Explorer UI assumes Malloy, Looker background</td>
+          <td>Explorer assumes Malloy, Looker background</td>
           <td>The Fields builder is a Looker-style query builder: you need to know a group-by from an aggregate, and
             that a
             chart tag goes on the view. Not much prevents you from malforming a query or producing an invalid chart.
@@ -861,7 +868,7 @@ SPDX-License-Identifier: MIT
             mostly the same code.</td>
           <td>Versioned, reusable components (tables, charts, formatters) served alongside
             <code>/sdk/publisher.js</code>,
-            plus scaffold templates built on them; component and plug-ins a package can declare as
+            plus scaffold templates built on them; components and plug-ins a package can declare as
             dependencies.
           </td>
         </tr>
@@ -898,21 +905,27 @@ SPDX-License-Identifier: MIT
 
       <!-- ─────────────────────────────────────────────── -->
       <h2 id="question"><span class="num">06</span>Proposal: Question mode</h2>
-      <p class="lede">A new way to build a query in the model explorer. The user answers questions instead of picking
+      <p class="lede">A new way to build a query in the Explorer. The user answers questions instead of picking
         fields, and every combination of answers produces a valid chart.</p>
 
       <h3>The problem</h3>
-      <p>The explorer's Fields mode resembles a traditional query builder. You pick a source, then
+      <p>The Explorer's field picker resembles a traditional query builder. You pick a source, then
         click to add dimensions,
         add measures, add filters, and choose a renderer. For an analyst familiar with Malloy concepts, that
-        is the right tool. For a manager, a PM, or someone who opened the Console from a link, it hands over a grammar
-        before it hands over an answer. Most of the combinations it allows produce a table or an invalid chart.</p>
-      <p>Future work should explore minor design treatments that might make Fields content more accessible and
-        discoverable. For example, expanding all groups in the tree by default, and removing flex-grow conditions that
-        push sections to the bottom of the screen. It took my eyes way too long to figure out how to change the chart
+        is the right tool. For an operator, a PM, or someone who opened the Console from a link, it tests for semantic
+        modeling
+        fluency
+        before it hands over an answer. Most of the combinations you'd get from unskilled clicking produce a table or an
+        invalid chart.</p>
+      <p>Future work should explore minor design treatments that might make Explorer content more accessible and
+        discoverable. For example, expanding all groups in the tree by default, surfacing field labels over names, and
+        removing flex-grow conditions that
+        push sections to the bottom of the screen. And it took my eyes way too long to figure out how to change the
+        chart
         type
-        away from the table type when picking fields manually. Clearing the query doesn't remove the results table, so
-        it's not clear how to get back to the bookmarked view UI without refreshing the page.</p>
+        away from the table type when picking fields manually due to lack of affordance. Clearing the query doesn't
+        remove the latest results table, so
+        it's not clear how to get back to the bookmarked view catalog without refreshing the page.</p>
 
       <figure class="wide">
         <img src="img/question-0-fields.png" alt="The Fields builder">
@@ -930,11 +943,13 @@ SPDX-License-Identifier: MIT
           alt="Fields mode with revenue, category and region selected, rendered as a table">
         <figcaption><b>Revenue by category and region, picked in Fields.</b> One measure and two dimensions is a
           natural stacked-bar question, but the renderer defaults to <i>Table</i>: a long list of category–region
-          pairs to scan by eye. Getting a chart means knowing to open the renderer menu and pick one.</figcaption>
+          pairs to scan by eye. Getting a chart means knowing to open the renderer menu and which chart type to pick.
+        </figcaption>
       </figure>
 
       <h3>The design</h3>
-      <p>Question mode reduces the explorer to three questions, asked in order, each unlocked in sequence:</p>
+      <p>Question mode reduces the Explorer's field picker to three questions, asked in order, each unlocked in
+        sequence:</p>
       <ol class="steps">
         <li><b>What would you like to measure?</b> Pick a measure, grouped
           by source label and listed by its field label. With nothing else answered yet, you get one big, beautiful
@@ -955,8 +970,9 @@ SPDX-License-Identifier: MIT
       </ol>
       <p>The principle is that <b>every input yields a valid visualization</b>. The chart is chosen
         deterministically
-        based on the metadata of the fields that were selected, so
-        all user inputs should produce valid charts rather than flat tables. <i>Show it as</i> defaults to <b>Auto</b>,
+        based on the shape and sequence of the fields that were selected, so
+        all user inputs should produce valid charts rather than unspecified tables. <i>Show it as</i> defaults to
+        <b>Auto</b>,
         which you can override
         manually.
       </p>
@@ -1098,7 +1114,7 @@ SPDX-License-Identifier: MIT
           </td>
         </tr>
         <tr>
-          <td>Manager / PM</td>
+          <td>Operator / PM</td>
           <td>Aspires to use this comfortably</td>
           <td>Can't mess this up, gets a chart every time and learns about the data</td>
         </tr>
@@ -1227,8 +1243,7 @@ SPDX-License-Identifier: MIT
       <p>The agent expected a query language with notebooks, where dashboards meant writing a React or HTML app.
         Instead,
         dashboards are built in and declared in Malloy; givens are typed parameters whose type picks the control; and
-        access control, persistence, and MCP are part of the product. The catch: dashboard tags are checked far less
-        strictly than the model.</p>
+        access control, persistence, and MCP are part of the product.</p>
       <p>Against comparable tools (from memory, not web researched), Rill and Evidence.dev are closest on "no code,
         files
         in git, local DuckDB," and Cube, Looker, Omni, Snowflake, and the dbt Semantic Layer on "governed semantic layer

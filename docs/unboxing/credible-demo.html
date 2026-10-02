@@ -9,10 +9,12 @@ SPDX-License-Identifier: MIT
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Part 2 — Credible demo workspace · Publisher unboxing</title>
-  <meta name="description" content="A library filled from the workspace's packages, AI-drafted insights, and saving anything worth keeping back to its package.">
+  <meta name="description"
+    content="A library filled from the workspace's packages, AI-drafted insights, and saving anything worth keeping back to its package.">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Credible demo workspace: a front door for Publisher">
-  <meta property="og:description" content="Publisher unboxing, Part 2 of 2: a library filled from the workspace's packages, AI-drafted insights, and saving anything worth keeping back to its package.">
+  <meta property="og:description"
+    content="Publisher unboxing, Part 2 of 2: a library filled from the workspace's packages, AI-drafted insights, and saving anything worth keeping back to its package.">
   <meta property="og:url" content="https://nmcdnld.github.io/publisher/docs/unboxing/credible-demo.html">
   <meta property="og:image" content="https://nmcdnld.github.io/publisher/docs/unboxing/img/og-part2.png">
   <meta property="og:image:width" content="1200">
@@ -606,14 +608,14 @@ SPDX-License-Identifier: MIT
         rather than
         the people who model it. It builds on top of the Publisher REST API.</p>
 
-      <p>Part 1 ended with two packages full of content and an explorer that assumes its user already knows
-        Malloy or software engineering concepts. This prototype is my guess at where everyone else arrives, and
+      <p>Part 1 ended with two packages full of content and an Explorer that assumes its user already knows
+        Malloy or software engineering concepts, with a small potential improvement in Question mode. This prototype is
+        my guess at where everyone else arrives, and
         how
         they discover what's already there: a consumption-oriented workspace that knows what content its packages serve,
-        drafts
-        insights from them,
-        and saves anything worth keeping back into the package it came from, so the model stays the source of
-        truth.</p>
+        manually and autonomously drafts
+        insights from its models based on human feedback,
+        and saves anything worth keeping back into the package it came from.</p>
 
       <figure class="wide">
         <img src="img/credible-demo/discover.png" alt="The For You home page">
@@ -660,7 +662,7 @@ SPDX-License-Identifier: MIT
 
       <p><b>Stack.</b> The prototype lives in <code>packages/credible-demo</code> and runs on <code>:5180</code> over
         Publisher on <code>:4000</code>. It uses React 19, Vite, Tailwind and shadcn/Radix for the shell, and the
-        Publisher SDK for embedded dashboards, models, notebooks and data apps.
+        Publisher SDK for embedded dashboards, models, notebooks, and data apps.
 
       </p>
       <p>The AI analyst runs as a Cloudflare
@@ -705,7 +707,7 @@ SPDX-License-Identifier: MIT
             href="index.html#football">Part
             1</a> runs unmodified inside the Credible demo workspace, with a structured details panel and multi-player
           comment thread UX that
-          Publisher
+          Console
           currently has no
           place for.</figcaption>
       </figure>
@@ -743,7 +745,7 @@ SPDX-License-Identifier: MIT
 
       <!-- ─────────────────────────────────────────────── -->
       <h2 id="publish"><span class="num">03</span>A new entry point: Publish from Publisher</h2>
-      <p class="lede">The Publisher's results used to stay in the Publisher. Now every query result and every dashboard
+      <p class="lede">The Publisher's results used to stay in the Console. Now every query result and every dashboard
         has
         a Publish button that hands it to the Credible workspace for review, for iteration, or just for a more
         consumption-oriented experience when sharing data.</p>
@@ -792,9 +794,11 @@ SPDX-License-Identifier: MIT
 
       <figure class="wide">
         <img src="img/credible-demo/discover-trending.png" alt="For you, trending, and resume">
-        <figcaption><b>Below the fold.</b> <i>Trending</i> is what the team is recently accessing, with view counts and
+        <figcaption><b>Below the fold.</b> <i>Trending</i> features content the team has been recently accessing, with
+          view counts and
           readers'
-          avatars, across every content kind. <i>Resume</i> lists threads and queries you left open, with the source
+          avatars, across every content kind. <i>Resume</i> lists threads and queries you recently opened, with the
+          source
           each one uses.</figcaption>
       </figure>
 
@@ -808,7 +812,8 @@ SPDX-License-Identifier: MIT
 
       <figure class="wide">
         <img src="img/credible-demo/studio-recipe.png" alt="Generate insight recipe">
-        <figcaption><b>One click, one new insight.</b> Each press is chosen to cover what the existing insights don't.
+        <figcaption><b>One click, one new insight.</b> Each click sends a request to cover what the existing insights
+          don't.
           You can steer it in plain words ("anything unusual in returns"), limit it to kinds of finding (changes,
           anomalies, mix shifts, drivers), limit it to specific sources, or throw the kitchen sink at it to see what it
           will find.</figcaption>
@@ -818,13 +823,13 @@ SPDX-License-Identifier: MIT
         <img src="img/credible-demo/studio-schedule.png" alt="Studio schedule">
         <figcaption><b>On a schedule, with the gate.</b> Every day at 6:00 AM: look for all four kinds of finding in
           every source, feature the top 3 scoring 60 or more automatically, and leave the rest waiting as candidates
-          for the admin to approve or reject.</figcaption>
+          for the admins to approve or reject.</figcaption>
       </figure>
 
       <h3>Every number is checked</h3>
       <p>Each draft insight must pass two checks. Every number in it
         must be a metric computed by <code>compute_metric</code> from a query result, and every chart must read only
-        this run's datasets and render headless. A draft that fails gets one repair turn, then it's dropped, and a
+        this run's datasets and render as a template. A draft that fails gets one repair turn, then it's dropped, and a
         shallow
         run lists what it threw out.</p>
 
@@ -836,10 +841,9 @@ SPDX-License-Identifier: MIT
           at a
           time. Paging past the last card asks the Studio for more like this one</figcaption>
       </figure>
-      <p>The ranking is deliberately simple and readable today. An insight's own score, plus 0.25 per topic it shares
-        with what you're reading, 0.1 for the same source, 0.15 for the same view, and 0.1 if a person featured it.
-        Insights you've opened this session drop behind ones you haven't. Dismissing one says "You'll see fewer insights
-        like this," with an undo. Future work should make this work across sessions and users too.</p>
+      <p>Insights you've opened this session drop behind ones you haven't. Dismissing one says "You'll see fewer
+        insights
+        like this," with an undo. Future work should explore how this works across sessions and users.</p>
 
       <!-- ─────────────────────────────────────────────── -->
       <h2 id="chat"><span class="num">05</span>Chat, and promoting what it finds</h2>
@@ -853,7 +857,7 @@ SPDX-License-Identifier: MIT
           a status (<i>Accepted</i>), a chart with its source line
           (<code>storefront · order_items · sales_by_region</code>), and the actions: <i>Save</i> and the Malloy. Admins
           also get <i>Show work</i>, the
-          full tool trace. <span class="src">/chat/th-west</span>
+          full tool trace.
         </figcaption>
       </figure>
 
@@ -907,10 +911,11 @@ SPDX-License-Identifier: MIT
 
       <figure class="wide">
         <img src="img/credible-demo/analysis.png" alt="Analysis page">
-        <figcaption><b>An analysis, once kept.</b> The claim, the evidence chart, the
-          query and its rows (copy or CSV), and the details rail: author, owner, status, package, model, source and
+        <figcaption><b>An insight, once saved.</b> The claim, the evidence chart, the
+          query and its rows (copy or CSV), and the structured details panel: author, owner, status, package, model,
+          source and
           view. Below it, the source's card with its joins, then what it depends on and what else reads the same source.
-          <span class="src">/analysis/an-west</span>
+
         </figcaption>
       </figure>
       <figure class="wide">
@@ -984,11 +989,13 @@ SPDX-License-Identifier: MIT
       <p class="lede">Questions about data go wrong when the question is vague about what it's about. In the composer,
         you type <code>@</code> and pull in the exact entity you want to reference.</p>
 
-      <p>Eight kinds of entity can be mentioned: <b>sources</b>, <b>dashboards</b>, <b>notebooks</b>, <b>data apps</b>,
+      <p>Eight kinds of workspace objects can be mentioned: <b>sources</b>, <b>dashboards</b>, <b>notebooks</b>, <b>data
+          apps</b>,
         <b>models</b>, <b>packages</b>, and this app's own <b>insights</b> and <b>threads</b>. Handles are unique per
         workspace, prefixed with the package when two collide. A mention sends the entity's definition to the AI
         analyst as an attachment,
-        and, more usefully, helps the AI analyst understand what the answer should be grounded in. The composer also
+        and, more usefully, helps the AI analyst understand what content the answer should be grounded by. The composer
+        also
         takes
         uploaded attachments and transcribes voice input.
       </p>
@@ -1036,7 +1043,8 @@ SPDX-License-Identifier: MIT
       <!-- ─────────────────────────────────────────────── -->
       <h2 id="future"><span class="num">08</span>Where it could go</h2>
       <p class="lede">Together, the prototype's parts make one loop: what the workspace values steers what the AI looks
-        for, which content is featured, and what the AI finds eventually turns into proposed changes to the model. The
+        for, which content is featured to the team, and what the AI finds eventually turns into proposed changes to the
+        model. The
         pieces exist here in rough
         form, but none of it has been compared against the real product or validated by real users yet.</p>
 
@@ -1076,14 +1084,15 @@ SPDX-License-Identifier: MIT
           ever
           gets promoted into the package.
         </li>
-        <li><b>A first-party chat client.</b> The <a href="#composer">composer</a> goes well beyond the Credible App's
+        <li><b>A first-party chat client.</b> The <a href="#composer">composer</a> vision may go beyond the Credible
+          App's
           workspace chat bar, and that may cut against how Credible pitches itself today: as the engine that plugs into
           the agent you already use (Claude, ChatGPT, Gemini, or Cursor and Claude Code for coding) over MCP, rather
           than another vendor's chat window. Owning the client is what makes <code>@</code> mentions of workspace
           objects, the context budget, and
           one-click saving to the Library possible, but it competes with tools analysts already use. One middle path is
           to keep MCP as the primary surface and treat the composer as the in-product option for people who don't live
-          in an AI client.
+          in an AI client or are happy to use our tooling.
         </li>
         <li><b>Insights that check themselves.</b> A saved insight keeps the rows it was written against, so re-running
           it on a schedule and flagging when the live chart disagrees with the text description is cheap. The tight end
@@ -1108,7 +1117,7 @@ SPDX-License-Identifier: MIT
 
       <!-- ─────────────────────────────────────────────── -->
       <h2 id="next"><span class="num">09</span>Next steps</h2>
-      <p class="lede">The assignment was open-ended: play around with Publisher. I picked these directions by
+      <p class="lede">My goal was open-ended: get to know Publisher. I picked these directions by
         following what looked interesting, without seeing the Credible app, its users, or its roadmap. As a next step
         I'd like to
         find out which of these ideas matter most.</p>
