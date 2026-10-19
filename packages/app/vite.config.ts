@@ -1,6 +1,7 @@
 // Copyright (c) Credible Data Inc.
 // SPDX-License-Identifier: MIT
 
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { defineConfig } from "vite";
@@ -53,10 +54,27 @@ export default ({ mode }) => {
                        process.env.PUBLISHER_URL ?? "http://localhost:4000",
                     changeOrigin: true,
                  },
+                 // Package files (data apps) and the runtime they load.
+                 "/environments": {
+                    target:
+                       process.env.PUBLISHER_URL ?? "http://localhost:4000",
+                    changeOrigin: true,
+                 },
+                 "/sdk": {
+                    target:
+                       process.env.PUBLISHER_URL ?? "http://localhost:4000",
+                    changeOrigin: true,
+                 },
+                 // The console-ai Worker (`packages/console-ai`, `bun run dev`).
+                 "/ai": {
+                    target:
+                       process.env.CONSOLE_AI_URL ?? "http://localhost:8790",
+                    changeOrigin: true,
+                 },
               },
            }
          : {},
-      plugins: [react()],
+      plugins: [react(), tailwindcss()],
       define: {
          // This is REQUIRED for React and other libraries to eliminate debug code
          "process.env.NODE_ENV": JSON.stringify(mode),

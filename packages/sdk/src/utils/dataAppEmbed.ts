@@ -36,6 +36,19 @@ export function isPublisherResizeMessage(
 }
 
 /**
+ * postMessage `type` a host frame sends an embedded data app to set its light
+ * or dark mode. publisher.js exposes it as `Publisher.theme` and fires a
+ * `publisher:theme` event on the app's window.
+ */
+export const PUBLISHER_THEME_MESSAGE_TYPE = "publisher:theme";
+
+/** Theme message a host frame posts to an embedded data app. */
+export interface PublisherThemeMessage {
+   type: typeof PUBLISHER_THEME_MESSAGE_TYPE;
+   mode: "light" | "dark";
+}
+
+/**
  * Derive the Publisher data origin (where static package files are served)
  * from the configured API base URL by stripping the trailing `/api/v0`.
  *

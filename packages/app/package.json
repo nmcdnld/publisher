@@ -44,9 +44,21 @@
       "@malloy-publisher/sdk": "workspace:*",
       "@mui/icons-material": "^7.0.2",
       "@mui/material": "^7.0.2",
+      "@tailwindcss/vite": "^4.3.3",
+      "@tanstack/ai": "^0.65.0",
+      "@tanstack/ai-client": "^0.37.0",
+      "@tanstack/ai-react": "^0.29.5",
+      "@tanstack/markdown": "^0.0.13",
       "@tanstack/react-query": "^5.59.16",
+      "class-variance-authority": "^0.7.1",
+      "clsx": "^2.1.1",
+      "lucide-react": "^1.52.0",
+      "radix-ui": "^1.6.7",
       "react-colorful": "^5.6.1",
-      "react-router-dom": "^7.18.4"
+      "react-router-dom": "^7.18.4",
+      "tailwind-merge": "^3.7.0",
+      "tailwindcss": "^4.3.3",
+      "zod": "^4.6.5"
    },
    "peerDependencies": {
       "react": "^19.1.0",

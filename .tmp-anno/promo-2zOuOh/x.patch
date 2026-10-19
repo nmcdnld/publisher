@@ -1,0 +1,307 @@
+--- a/market.malloy
++++ b/market.malloy
+@@ -19,1 +19,2 @@
++##! experimental.access_modifiers
+ ## theme.palette.series = ["#2563eb", "#16a34a", "#dc2626", "#d97706", "#7c3aed", "#0891b2"]
+@@ -22,2 +23,24 @@
+-source: securities is duckdb.table('data/securities.csv') extend {
++source: securities is duckdb.table('data/securities.csv') include {
++  #(doc) Test description for symbol.
++  `symbol`
++  #(doc) Test description for name.
++  `name`
++  #(doc) Test description for asset_class.
++  `asset_class`
++  #(doc) Test description for sector.
++  `sector`
++  #(doc) Test description for theme.
++  `theme`
++  #(doc) Test description for stage.
++  `stage`
++  #(doc) Test description for conviction.
++  `conviction`
++  #(doc) Test description for tags.
++  `tags`
++  #(doc) Test description for watchlists.
++  `watchlists`
++  #(doc) Test description for thesis.
++  `thesis`
++  *
++} extend {
+   primary_key: symbol
+@@ -42,2 +65,19 @@
+-source: daily_bars is duckdb.table('data/daily_bars.parquet') extend {
++source: daily_bars is duckdb.table('data/daily_bars.parquet') include {
++  #(doc) Test description for symbol.
++  `symbol`
++  #(doc) Test description for session_date.
++  `session_date`
++  #(doc) Test description for open.
++  `open`
++  #(doc) Test description for high.
++  `high`
++  #(doc) Test description for low.
++  `low`
++  #(doc) Test description for close.
++  `close`
++  #(doc) Test description for volume.
++  `volume`
++  *
++} extend {
++  #(doc) Test description for securities.
+   join_one: securities with symbol
+@@ -65,2 +105,21 @@
+-source: intraday_bars is duckdb.table('data/intraday_bars.parquet') extend {
++source: intraday_bars is duckdb.table('data/intraday_bars.parquet') include {
++  #(doc) Test description for symbol.
++  `symbol`
++  #(doc) Test description for bar_time.
++  `bar_time`
++  #(doc) Test description for session_date.
++  `session_date`
++  #(doc) Test description for open.
++  `open`
++  #(doc) Test description for high.
++  `high`
++  #(doc) Test description for low.
++  `low`
++  #(doc) Test description for close.
++  `close`
++  #(doc) Test description for volume.
++  `volume`
++  *
++} extend {
++  #(doc) Test description for securities.
+   join_one: securities with symbol
+@@ -91,2 +150,37 @@
+-source: options_flow is duckdb.table('data/options_flow.parquet') extend {
++source: options_flow is duckdb.table('data/options_flow.parquet') include {
++  #(doc) Test description for symbol.
++  `symbol`
++  #(doc) Test description for session_date.
++  `session_date`
++  #(doc) Test description for call_volume.
++  `call_volume`
++  #(doc) Test description for put_volume.
++  `put_volume`
++  #(doc) Test description for call_premium.
++  `call_premium`
++  #(doc) Test description for put_premium.
++  `put_premium`
++  #(doc) Test description for net_call_premium.
++  `net_call_premium`
++  #(doc) Test description for net_put_premium.
++  `net_put_premium`
++  #(doc) Test description for bullish_premium.
++  `bullish_premium`
++  #(doc) Test description for bearish_premium.
++  `bearish_premium`
++  #(doc) Test description for call_volume_ask_side.
++  `call_volume_ask_side`
++  #(doc) Test description for call_volume_bid_side.
++  `call_volume_bid_side`
++  #(doc) Test description for put_volume_ask_side.
++  `put_volume_ask_side`
++  #(doc) Test description for put_volume_bid_side.
++  `put_volume_bid_side`
++  #(doc) Test description for call_open_interest.
++  `call_open_interest`
++  #(doc) Test description for put_open_interest.
++  `put_open_interest`
++  *
++} extend {
++  #(doc) Test description for securities.
+   join_one: securities with symbol
+@@ -117,2 +211,25 @@
+-source: greek_exposure is duckdb.table('data/greek_exposure.parquet') extend {
++source: greek_exposure is duckdb.table('data/greek_exposure.parquet') include {
++  #(doc) Test description for symbol.
++  `symbol`
++  #(doc) Test description for session_date.
++  `session_date`
++  #(doc) Test description for call_gamma.
++  `call_gamma`
++  #(doc) Test description for put_gamma.
++  `put_gamma`
++  #(doc) Test description for call_delta.
++  `call_delta`
++  #(doc) Test description for put_delta.
++  `put_delta`
++  #(doc) Test description for call_vanna.
++  `call_vanna`
++  #(doc) Test description for put_vanna.
++  `put_vanna`
++  #(doc) Test description for call_charm.
++  `call_charm`
++  #(doc) Test description for put_charm.
++  `put_charm`
++  *
++} extend {
++  #(doc) Test description for securities.
+   join_one: securities with symbol
+@@ -135,2 +252,15 @@
+-source: volatility is duckdb.table('data/volatility.parquet') extend {
++source: volatility is duckdb.table('data/volatility.parquet') include {
++  #(doc) Test description for symbol.
++  `symbol`
++  #(doc) Test description for session_date.
++  `session_date`
++  #(doc) Test description for iv_rank.
++  `iv_rank`
++  #(doc) Test description for iv_30d.
++  `iv_30d`
++  #(doc) Test description for rv_21d.
++  `rv_21d`
++  *
++} extend {
++  #(doc) Test description for securities.
+   join_one: securities with symbol
+@@ -153,2 +283,21 @@
+-source: earnings is duckdb.table('data/earnings.parquet') extend {
++source: earnings is duckdb.table('data/earnings.parquet') include {
++  #(doc) Test description for symbol.
++  `symbol`
++  #(doc) Test description for report_date.
++  `report_date`
++  #(doc) Test description for is_upcoming.
++  `is_upcoming`
++  #(doc) Test description for is_premarket.
++  `is_premarket`
++  #(doc) Test description for expected_move_pct.
++  `expected_move_pct`
++  #(doc) Test description for eps_estimate.
++  `eps_estimate`
++  #(doc) Test description for eps_actual.
++  `eps_actual`
++  #(doc) Test description for surprise_pct.
++  `surprise_pct`
++  *
++} extend {
++  #(doc) Test description for securities.
+   join_one: securities with symbol
+@@ -193,2 +342,44 @@
+-source: screener_snapshot is duckdb.table('data/screener_snapshot.parquet') extend {
++source: screener_snapshot is duckdb.table('data/screener_snapshot.parquet') include {
++  #(doc) Test description for symbol.
++  `symbol`
++  #(doc) Test description for as_of.
++  `as_of`
++  #(doc) Test description for price.
++  `price`
++  #(doc) Test description for change_pct.
++  `change_pct`
++  #(doc) Test description for high_52w.
++  `high_52w`
++  #(doc) Test description for low_52w.
++  `low_52w`
++  #(doc) Test description for volume.
++  `volume`
++  #(doc) Test description for avg_volume_30d.
++  `avg_volume_30d`
++  #(doc) Test description for relative_volume.
++  `relative_volume`
++  #(doc) Test description for rsi_14.
++  `rsi_14`
++  #(doc) Test description for atr_14.
++  `atr_14`
++  #(doc) Test description for sma_50.
++  `sma_50`
++  #(doc) Test description for sma_200.
++  `sma_200`
++  #(doc) Test description for iv_30d.
++  `iv_30d`
++  #(doc) Test description for iv_rank.
++  `iv_rank`
++  #(doc) Test description for expected_move_pct.
++  `expected_move_pct`
++  #(doc) Test description for call_volume.
++  `call_volume`
++  #(doc) Test description for put_volume.
++  `put_volume`
++  #(doc) Test description for market_cap.
++  `market_cap`
++  #(doc) Test description for next_earnings.
++  `next_earnings`
++  *
++} extend {
+   primary_key: symbol
+@@ -195,1 +386,2 @@
++  #(doc) Test description for securities.
+   join_one: securities with symbol
+@@ -199,2 +391,16 @@
+-source: journal is duckdb.table('data/journal.parquet') extend {
++source: journal is duckdb.table('data/journal.parquet') include {
++  #(doc) Test description for entry_id.
++  `entry_id`
++  #(doc) Test description for symbol.
++  `symbol`
++  #(doc) Test description for kind.
++  `kind`
++  #(doc) Test description for body.
++  `body`
++  #(doc) Test description for price_at.
++  `price_at`
++  #(doc) Test description for created_at.
++  `created_at`
++  *
++} extend {
+   primary_key: entry_id
+@@ -201,1 +407,2 @@
++  #(doc) Test description for securities.
+   join_one: securities with symbol
+@@ -209,2 +416,18 @@
+-source: signal_catalog is duckdb.table('data/signal_catalog.csv') extend {
++source: signal_catalog is duckdb.table('data/signal_catalog.csv') include {
++  #(doc) Test description for signal_id.
++  `signal_id`
++  #(doc) Test description for signal.
++  `signal`
++  #(doc) Test description for family.
++  `family`
++  #(doc) Test description for style.
++  `style`
++  #(doc) Test description for bias.
++  `bias`
++  #(doc) Test description for bias_sign.
++  `bias_sign`
++  #(doc) Test description for definition.
++  `definition`
++  *
++} extend {
+   primary_key: signal_id
+--- a/signals.malloy
++++ b/signals.malloy
+@@ -193,1 +193,2 @@
++  #(doc) Test description for securities.
+   join_one: securities with symbol
+--- a/dashboards/market_tape.malloy
++++ b/dashboards/market_tape.malloy
+@@ -38,1 +38,2 @@
++  #(doc) Test description for breadth_strip.
+   # colspan=12
+@@ -43,1 +44,2 @@
++  #(doc) Test description for performance.
+   # colspan=8
+@@ -48,1 +50,2 @@
++  #(doc) Test description for volatility.
+   # colspan=4
+@@ -52,1 +55,2 @@
++  #(doc) Test description for board.
+   # colspan=12
+--- a/dashboards/signal_lab.malloy
++++ b/dashboards/signal_lab.malloy
+@@ -53,1 +53,2 @@
++  #(doc) Test description for kpis.
+   # colspan=12
+@@ -60,1 +61,2 @@
++  #(doc) Test description for board.
+   # colspan=12
+@@ -66,1 +68,2 @@
++  #(doc) Test description for family_edge.
+   # colspan=6
+@@ -71,1 +74,2 @@
++  #(doc) Test description for distribution.
+   # colspan=6
+@@ -76,1 +80,2 @@
++  #(doc) Test description for recent.
+   # colspan=12

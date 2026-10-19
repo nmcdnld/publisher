@@ -504,26 +504,26 @@ mcpApp.all(MCP_ENDPOINT, async (req, res) => {
 //   - `/api/v0/.../events`    → live-reload SSE (registered in API routes
 //                                below; this comment is the cross-reference)
 
-// Serve the runtime helper that in-package HTML data apps load via
-// <script src="/sdk/publisher.js">. Path resolved once at module load.
-const PUBLISHER_RUNTIME_PATH = path.join(
-   path.dirname(__filename_esm),
-   "runtime",
-   "publisher.js",
-);
-app.get("/sdk/publisher.js", (_req, res) => {
-   res.type("application/javascript");
-   // Short cache so live edits during local dev show up quickly. In
-   // production this file is content-stable per release.
-   res.setHeader("cache-control", "public, max-age=60");
-   res.setHeader("X-Content-Type-Options", "nosniff");
-   res.sendFile(PUBLISHER_RUNTIME_PATH, (err) => {
-      if (err) {
-         logger.error("Failed to send publisher.js runtime", { error: err });
-         if (!res.headersSent) res.status(500).end();
-      }
+// Serve the runtime helpers that in-package HTML data apps load via
+// <script src="/sdk/publisher.js">, and `publisher-app.js`, which renders a
+// page from the `app.json` beside it. Paths resolved once at module load.
+const RUNTIME_DIR = path.join(path.dirname(__filename_esm), "runtime");
+for (const file of ["publisher.js", "publisher-app.js"]) {
+   const runtimePath = path.join(RUNTIME_DIR, file);
+   app.get(`/sdk/${file}`, (_req, res) => {
+      res.type("application/javascript");
+      // Short cache so live edits during local dev show up quickly. In
+      // production this file is content-stable per release.
+      res.setHeader("cache-control", "public, max-age=60");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.sendFile(runtimePath, (err) => {
+         if (err) {
+            logger.error(`Failed to send ${file} runtime`, { error: err });
+            if (!res.headersSent) res.status(500).end();
+         }
+      });
    });
-});
+}
 
 // Serve files from inside a package directory at
 //   /environments/<env>/packages/<pkg>/<relative-path>

@@ -1,0 +1,86 @@
+--- a/storefront.malloy
++++ b/storefront.malloy
+@@ -18,1 +18,2 @@
++##! experimental.access_modifiers
+ ## theme.palette.series = ["#4f46e5", "#7c3aed", "#ec4899", "#10b981", "#f59e0b", "#06b6d4"]
+@@ -21,2 +22,14 @@
+-source: customers is duckdb.table('data/customers.parquet') extend {
++source: customers is duckdb.table('data/customers.parquet') include {
++  #(doc) City recorded in the customer's address, presumably their home city.
++  `city`
++  #(doc) Unique identifier for a customer; appears to be the key order lines join on.
++  `customer_id`
++  #(doc) Customer's full name, used to label customers in views such as top customers by spend.
++  `full_name`
++  #(doc) Date the customer appears to have signed up or created their account.
++  `signup_date`
++  #(doc) Customer's home state, used to assign sales regions and map revenue by state.
++  `state`
++  *
++} extend {
+   primary_key: customer_id
+@@ -28,2 +41,16 @@
+-source: products is duckdb.table('data/products.parquet') extend {
++source: products is duckdb.table('data/products.parquet') include {
++  #(doc) Brand name of the product.
++  `brand`
++  #(doc) Product category the product belongs to.
++  `category`
++  #(doc) Cost of the product to the business, used to compute gross margin.
++  `cost`
++  #(doc) Product name as shown in product listings and top-product rankings.
++  `name`
++  #(doc) Unique identifier of the product.
++  `product_id`
++  #(doc) List price of the product in USD, before any discount; what an order line actually charged is order_items.sale_price.
++  `retail_price`
++  *
++} extend {
+   primary_key: product_id
+@@ -37,2 +64,8 @@
+-source: regions is duckdb.table('data/regions.csv') extend {
++source: regions is duckdb.table('data/regions.csv') include {
++  #(doc) US sales region that a state is assigned to.
++  `region`
++  #(doc) The state name or code for a region, likely used to group geography in storefront reporting.
++  `state`
++  *
++} extend {
+   primary_key: state
+@@ -42,2 +75,18 @@
+-source: order_items is duckdb.table('data/order_items.parquet') extend {
++source: order_items is duckdb.table('data/order_items.parquet') include {
++  #(doc) Date the order line was created; drives monthly, annual, and seasonal revenue trends.
++  `created_at`
++  #(doc) Identifier of the customer who placed the order containing this line.
++  `customer_id`
++  #(doc) Unique identifier for an individual order line item.
++  `id`
++  #(doc) Identifier of the order this line belongs to; distinct values give the order count.
++  `order_id`
++  #(doc) Identifier of the product sold on this order line.
++  `product_id`
++  #(doc) Price charged for this order line; the basis for revenue and gross margin.
++  `sale_price`
++  #(doc) Fulfillment status of the order line, such as returned; used for return rate and status counts.
++  `status`
++  *
++} extend {
+   primary_key: id
+--- a/dashboards/overview.malloy
++++ b/dashboards/overview.malloy
+@@ -117,1 +117,2 @@
++  #(doc) Headline dashboard figures — revenue, gross margin, orders, customers, average order value — under the dashboard filters.
+   # colspan=12
+@@ -136,1 +137,2 @@
++  #(doc) Dashboard tile showing monthly revenue trend, filtered by category, brand, region, start date and minimum sale price.
+   # colspan=6
+@@ -141,1 +143,2 @@
++  #(doc) Dashboard map of revenue by customer state, filtered by category, brand, region, start date and minimum sale price.
+   # colspan=6
+@@ -145,1 +148,2 @@
++  #(doc) Dashboard tile showing revenue by product category, filtered by category, brand, region, start date and minimum sale price.
+   # colspan=6
+@@ -150,1 +154,2 @@
++  #(doc) Dashboard tile showing top products by revenue, filtered by category, brand, region, start date and minimum sale price.
+   # colspan=6

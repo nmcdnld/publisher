@@ -1,0 +1,40 @@
+{
+   "name": "@malloy-publisher/credible-clone",
+   "description": "Clone of the Credible web app, on fixture data plus content served by a local Publisher, with chat answered by an agent on OpenRouter using Publisher's MCP tools",
+   "version": "0.0.1",
+   "private": true,
+   "type": "module",
+   "scripts": {
+      "dev": "bunx vite --host --port 5180",
+      "build": "bunx tsc --noEmit && bunx vite build",
+      "preview": "bunx vite preview",
+      "typecheck": "bunx tsc --noEmit",
+      "fixtures:register": "curl -sf -X POST ${PUBLISHER_URL:-http://localhost:4000}/api/v0/environments/examples/packages -H 'content-type: application/json' -d \"{\\\"name\\\":\\\"thelook_ecommerce\\\",\\\"location\\\":\\\"$PWD/fixtures/thelook_ecommerce\\\"}\" > /dev/null && echo 'registered thelook_ecommerce'"
+   },
+   "dependencies": {
+      "@malloy-publisher/sdk": "workspace:*",
+      "@mui/icons-material": "^7.0.2",
+      "@mui/material": "^7.0.2",
+      "@tailwindcss/vite": "^4.3.3",
+      "@tanstack/ai": "^0.65.0",
+      "@tanstack/ai-client": "^0.37.0",
+      "@tanstack/ai-mcp": "^0.8.0",
+      "@tanstack/ai-openrouter": "^0.21.0",
+      "@tanstack/markdown": "^0.0.13",
+      "@tanstack/react-query": "^5.59.16",
+      "clsx": "^2.1.1",
+      "lucide-react": "^1.52.0",
+      "react": "^19.1.0",
+      "react-dom": "^19.1.0",
+      "react-router-dom": "^7.18.4",
+      "tailwindcss": "^4.3.3",
+      "zod": "^4.6.5"
+   },
+   "devDependencies": {
+      "@types/react": "^19.1.7",
+      "@types/react-dom": "^19.1.6",
+      "@vitejs/plugin-react": "^4.3.1",
+      "typescript": "^5.8.3",
+      "vite": "^6.4.3"
+   }
+}

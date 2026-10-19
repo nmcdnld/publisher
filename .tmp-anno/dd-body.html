@@ -1,0 +1,885 @@
+  <style>
+    .sw {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      vertical-align: -1px;
+      margin-right: 4px;
+    }
+
+    .sw.ok {
+      background: #1a8a5a;
+    }
+
+    .sw.part {
+      background: #f59e0b;
+    }
+
+    .sw.miss {
+      background: #e5484d;
+    }
+
+    .sw.fail {
+      border: 1px dashed #e5484d;
+    }
+
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 28px;
+      margin: 24px 0 8px;
+    }
+
+    .stats div {
+      font-size: 13px;
+      color: var(--ink-2);
+    }
+
+    .stats b {
+      display: block;
+      font: 600 26px/1.1 var(--serif);
+      color: var(--ink);
+    }
+
+    .pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin: 28px -60px;
+      align-items: start;
+    }
+
+    figure.narrow {
+      max-width: 460px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    @media (max-width: 960px) {
+      .pair {
+        grid-template-columns: 1fr;
+        margin-left: 0;
+        margin-right: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <nav class="toc">
+      <div class="series">
+        <div class="label">Publisher unboxing</div>
+        <a href="https://nmcdnld.github.io/publisher/docs/unboxing/index.html"><b>Part 1</b>Unboxing Publisher</a>
+        <a href="https://nmcdnld.github.io/publisher/docs/unboxing/credible-demo.html"><b>Part 2</b>Credible demo
+          workspace</a>
+        <a href="data-dictionary.html" aria-current="page"><b>Part 3</b>Data Dictionary</a>
+      </div>
+      <div class="label">Contents</div>
+      <ol>
+        <li><a href="#why">Why a dictionary</a></li>
+        <li><a href="#index">The dictionary, on any package</a></li>
+        <li><a href="#pages">A page for every name</a></li>
+        <li><a href="#drafts">Describe the model</a></li>
+        <li><a href="#coverage">Question coverage</a></li>
+        <li><a href="#verdict">Reading a verdict</a></li>
+        <li><a href="#loop">Closing the loop on storefront</a></li>
+        <li><a href="#learned">What the prototype taught me</a></li>
+        <li><a href="#next">Where it could go</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <header>
+        <div class="kicker">Publisher unboxing · Part 3 · Data Dictionary</div>
+        <h1>Data Dictionary: making a model discoverable</h1>
+        <p class="dek">Parts 1 and 2 were about what you build on a Malloy model and where people go to consume it.
+          This part is about the model itself: can a person, or an agent, open a package they've never seen and work out
+          what it knows, what it means, and what it can't answer? I prototyped two Console pages to explore that: a Data
+          Dictionary that writes itself from any package, and a Question Coverage loop that scores the model against
+          the questions people actually ask.</p>
+        <div class="byline">Noah Mac · product + design engineering update · Oct 4 - Oct 9, 2026</div>
+
+        <div class="tldr">
+          <strong class="label">TL;DR</strong>
+          <ul>
+            <li><b>A data dictionary with zero configuration.</b> Every source, measure, dimension, view, join, given
+              and named query in a package gets its own page, built only from what Publisher already serves: model
+              metadata, source text, compiled queries, and the package's dashboards, notebooks and data apps. Each page
+              has live data, a content graph, and an <i>Ask about this</i> button.</li>
+            <li><b>The model documents itself, with a person in the loop.</b> One click has Opus draft a
+              <code>#(doc)</code> for every undocumented entity. You review, edit and accept each draft, and the
+              Console turns the accepted ones into a model patch that is compile-checked against the package before
+              anything is written. On <code>storefront</code>, that's 25 descriptions across two files, and
+              documentation coverage goes from 62% to 100%.
+            </li>
+            <li><b>A coverage score for "is this model good enough for AI?"</b> Opus writes a set of realistic
+              stakeholder questions, including ones the model probably can't answer. An agent with Publisher's own MCP
+              tools and skills then tries to answer each one and gives a verdict: answerable, partly answerable, or
+              missing. The verdicts roll up into a score, a heat map by theme, and a backlog of missing concepts.</li>
+            <li><b>Every gap becomes a handoff.</b> Each verdict carries the agent's work, recommended model changes,
+              and exit criteria, and downloads as a markdown brief for a coding agent. Re-scoring the same questions
+              after a model change shows whether the number moved.</li>
+            <li><b>It's a prototype.</b> Drafts and runs live in <code>localStorage</code>, there's no endpoint that
+              writes a model file yet, and my OpenRouter balance ran out partway through the first coverage run. Both
+              runs are below: the half-judged one that read 83, <i>Good</i>, and the complete re-score of the same
+              questions, which reads 62, <i>Fair</i>.</li>
+          </ul>
+        </div>
+      </header>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="why"><span class="num">01</span>Why a dictionary</h2>
+      <p class="lede">A semantic model is only as useful as its discoverability. If nobody can find the measure,
+        nobody uses it, and an agent that can't find it will invent one.</p>
+
+      <p>Both earlier parts kept running into the same wall from different directions. In <a
+          href="https://nmcdnld.github.io/publisher/docs/unboxing/index.html">Part 1</a>, the Explorer assumed you
+        already knew the model's vocabulary, and labels lost their meaning once a field was reached through a join. In
+        <a href="https://nmcdnld.github.io/publisher/docs/unboxing/credible-demo.html">Part 2</a>, the Library could
+        list every dashboard in a package, but not explain the definitions underneath them. Meanwhile the agent path,
+        <code>get_context</code>, ranks entities by their names and <code>#(doc)</code> text, so an undocumented
+        column is close to invisible to it.
+      </p>
+
+      <p>So I started from a one-page brainstorm of "views of the semantic model itself", with one rule: <b>zero
+          configuration, any package.</b> Every tile has to light up on a package it has never seen, using only what
+        Publisher already serves. Two ideas from that list became this prototype:</p>
+
+      <table>
+        <tr>
+          <th>Idea</th>
+          <th>What it is</th>
+          <th>Route</th>
+        </tr>
+        <tr>
+          <td>Data Dictionary</td>
+          <td>A browsable wiki of the model, one page per entity, with live data, related content, and AI-drafted
+            descriptions for whatever is undocumented</td>
+          <td><code>/:env/:pkg/dictionary</code></td>
+        </tr>
+        <tr>
+          <td>Question Coverage</td>
+          <td>Generated business questions, each judged answerable, partly answerable or missing, rolled up into a
+            score and a gap backlog</td>
+          <td><code>/:env/:pkg/coverage</code></td>
+        </tr>
+      </table>
+
+      <p>Everything below uses the bundled <code>storefront</code> package: six sources, 11 measures, 25 dimensions,
+        20 views and three joins over local DuckDB data. It's a small model, and well-documented for an example: 62% of
+        its entities had a <code>#(doc)</code> before I started.</p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="index"><span class="num">02</span>The dictionary, on any package</h2>
+      <p class="lede">Open a package and the dictionary is already there. Nobody has to write it, configure it, or
+        keep it in sync.</p>
+
+      <figure class="wide">
+        <img src="img/data-dictionary/index-full.png" alt="The storefront data dictionary overview">
+        <figcaption><b>The overview.</b> The package's <code>publisher.json</code> description, then the shape of the
+          model: 6 sources, 11 measures, 25 dimensions, 20 views and 3 joins. Two health cards sit beside the counts:
+          <i>Documented</i> (62%, with a button to draft the 25 missing descriptions) and <i>Question coverage</i>
+          (the latest score, linking to the coverage page). Below them is the package's content as live thumbnails,
+          then a card per source with its documentation rate, its joins, and how many dashboards and apps use it.
+          <span class="src">/examples/storefront/dictionary</span>
+        </figcaption>
+      </figure>
+
+      <p>The left rail is the model as a tree: sources, then their measures, dimensions, joins and views, then givens,
+        named queries, and content. A dot beside each entity says whether it's documented (solid green), has a draft
+        waiting (dashed), or has nothing (hollow). <kbd>/</kbd> focuses a search that ranks entities by name, label and
+        doc text, and also matches content titles.</p>
+
+      <h3>What it reads</h3>
+      <p>The dictionary builds an in-browser <i>ontology</i> of the package from the same REST endpoints any client can
+        use:</p>
+      <ul>
+        <li><code>GET …/models/{path}</code> for every model: the compiled model definition (fields, joins, primary
+          keys, table paths, annotations), its <code>sourceText</code>, and its givens. Source locations let every
+          page link to the exact line that defines it.</li>
+        <li>The package's dashboards, notebooks and data apps, with their text, so it can tell which content reads
+          which source, view, or field.</li>
+        <li><code>POST …/models/{path}/query</code> for the live data on each page, tagged with
+          <code>queryMetadata: {surface: "data-dictionary"}</code> so those queries can be told apart from real usage
+          later.</li>
+      </ul>
+      <p>No server change was needed for any of the read side. The AI parts (drafting, chat, coverage) go through a
+        small Cloudflare Worker, <code>packages/console-ai</code>, which the Vite dev server proxies at
+        <code>/ai/*</code>.</p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="pages"><span class="num">03</span>A page for every name</h2>
+      <p class="lede">Every entity gets a page, and every page answers the same three questions: what is this, what
+        does the data look like right now, and what else touches it?</p>
+
+      <figure class="wide">
+        <img src="img/data-dictionary/source.png" alt="The order_items source page">
+        <figcaption><b>A source.</b> <code>order_items</code>, the fact table: its <code>#(doc)</code>, a shortcut to
+          its definition (<code>storefront.malloy:41</code>), and <i>Live data</i>. The scorecards are picked
+          automatically from the source's measures, each with a delta against the same month a year earlier and a
+          sparkline over the source's main time dimension. Picking a scorecard charts it below.
+        </figcaption>
+      </figure>
+
+      <div class="pair">
+        <figure>
+          <img src="img/data-dictionary/card-live-data.png" alt="The live data card on order_items">
+          <figcaption><b>Live data, in full.</b> Revenue by month with a week/month/quarter/year grain picker, then
+            the top eight values of each low-cardinality dimension. Every panel has a <i>Malloy behind this panel</i>
+            disclosure, so the dictionary never shows a number you can't trace back to a query.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/data-dictionary/card-content-graph.png" alt="The content graph card on order_items">
+          <figcaption><b>The content graph.</b> The join and extend lineage drawn as a small DAG (3 upstream, 2
+            downstream), and then every link the dictionary could prove: its joins, the sources that extend it, the
+            named query that reads it, the views and givens reached through its fields, and the four data apps and one
+            dashboard that use it. <i>Also named in</i> is dashed because <code>data_app.malloy</code> only mentions
+            <code>order_items</code> by name; nothing in the compiled model ties them together.</figcaption>
+        </figure>
+      </div>
+
+      <p>That last distinction matters for discoverability. Most links are read from structure (imports, joins, tile
+        queries, the model paths in a data app's HTML), and a few are textual mentions. The dictionary keeps them
+        visibly separate rather than mixing confident links with guesses. An earlier version showed "Nothing in the
+        model references this" on far too many pages, and the fix was to look harder for real links, not to infer
+        them from names.</p>
+
+      <div class="pair">
+        <figure>
+          <img src="img/data-dictionary/field.png" alt="The total_sales measure page">
+          <figcaption><b>A measure.</b> <code>total_sales</code>, shown as <i>Revenue</i>: its label, doc, formula
+            (<code>sale_price.sum()</code>), a big number with its trend, and the four pieces of content that use it.
+            Picking a field in the tree doesn't open a separate page; it scrolls a feed of every field in the source,
+            so you can read a source top to bottom like a glossary.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/data-dictionary/view.png" alt="The margin_by_category view page">
+          <figcaption><b>A view.</b> <code>margin_by_category</code> runs live, drawn as the bar chart its
+            <code># bar_chart</code> annotation asks for, using the same renderer conventions as dashboards and
+            notebooks.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/data-dictionary/column.png" alt="The customers.state column page">
+          <figcaption><b>A table column.</b> <code>customers.state</code> has no definition in Malloy (it's read
+            straight from <code>data/customers.parquet</code>), so its page shows a value profile instead: 50 distinct
+            values, 0% null, and the most frequent. This one has an accepted draft description waiting to be promoted
+            (section 04).</figcaption>
+        </figure>
+      </div>
+
+      <figure class="wide">
+        <img src="img/data-dictionary/content-dashboard.png" alt="The Storefront overview dashboard opened inside the dictionary">
+        <figcaption><b>Content opens in place.</b> The <i>Storefront overview</i> dashboard runs live and interactive
+          inside the dictionary, under a <i>Uses</i> row of chips naming every source, view and field it reads. Each
+          chip shows the entity's doc on hover and opens its page on click. It's the same content graph read in the
+          other direction, from the content to the model.</figcaption>
+      </figure>
+
+      <h3>Ask about this</h3>
+      <figure class="wide">
+        <img src="img/data-dictionary/ask-open.png" alt="The Ask window open over a measure page">
+        <figcaption><b>A chat window that knows where you are.</b> <i>Ask about this</i> opens a detached window over
+          the page, so the dictionary still works underneath it. The page you're reading is sent along as markdown
+          ("Reading <code>order_items.order_item_count</code>"), with starter questions drawn from it. The footer names
+          the model (Claude Opus 5.5 by default, picked from a broad OpenRouter list) and says what grounds it:
+          <i>Publisher tools and skills over MCP</i>.</figcaption>
+      </figure>
+      <p>The chat runs on TanStack AI in the Worker, and it gets exactly what any external MCP client gets: every tool
+        Publisher registers (<code>get_context</code>, <code>execute_query</code>, <code>compile_model</code> and the
+        rest), plus the bundled skills, served as MCP prompts behind a <code>load_skill</code> tool, with
+        <code>malloy-analysis</code> preloaded. Threads are titled automatically and kept in a history dropdown.
+        Every question asked here is also filed into the package's Question Coverage (section 06).</p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="drafts"><span class="num">04</span>Describe the model: draft, review, promote</h2>
+      <p class="lede">An undocumented field is a discoverability bug. The dictionary drafts the missing descriptions,
+        and a person decides which ones become part of the model.</p>
+
+      <div class="flow">
+        <div class="node"><b>Draft</b><span>Opus writes a <code>#(doc)</code> for every undocumented entity</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Review</b><span>Edit, accept, or discard each one, in the panel or on its page</span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>Promote</b><span>Accepted drafts become a diff to the model files</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Check</b><span>Each changed file is compiled by the package's own compiler</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Write</b><span>Today: copy or download the patch. Later: write and reload</span></div>
+      </div>
+
+      <h3>1 · Draft</h3>
+      <p>On <code>storefront</code>, the undocumented entities are the 20 raw table columns behind
+        <code>customers</code>, <code>products</code>, <code>regions</code> and <code>order_items</code>, plus the
+        five views of the dashboard's <code>overview</code> source. <i>Draft 25 missing</i> sends them to Opus in batches of 12, three
+        batches at a time, sources first and each followed by its own fields, so the panel fills in source by source.
+        Each entity goes with its kind, type, formula, and up to eight neighbours it uses or is used by, with their
+        docs.</p>
+
+      <div class="pair">
+        <figure>
+          <img src="img/data-dictionary/drafts-running.png" alt="The drafts panel while drafting">
+          <figcaption><b>Drafting.</b> The <i>Describe the model</i> panel opens beside the overview and shows every
+            undocumented entity, grouped by source, with its state: queued, drafting, to review, accepted, or not
+            drafted. The run lives outside React, so it keeps going while you move around the dictionary.
+          </figcaption>
+        </figure>
+        <figure>
+          <img src="img/data-dictionary/drafts-review.png" alt="The drafts panel with 25 drafts to review">
+          <figcaption><b>25 to review.</b> Each draft has <i>Accept</i>, <i>Edit</i> and
+            <i>Discard</i>, and the footer has <i>Accept all</i> and <i>Review and promote</i>. Nothing has touched
+            the model yet; drafts stay in this browser until they're promoted.</figcaption>
+        </figure>
+      </div>
+
+      <p>The drafting prompt is deliberately modest: "Describe only what the name, type, formula and neighbours
+        support; where meaning is uncertain, say what it appears to be rather than guessing a business rule." That
+        shows up in the drafts. <code>signup_date</code> became "Date the customer <i>appears to have</i> signed up or
+        created their account." A hedge is the honest answer when the only evidence is a column name, and it's exactly
+        the kind of sentence a reviewer should either confirm or correct.</p>
+
+      <h3>2 · Review</h3>
+      <div class="pair">
+        <figure>
+          <img src="img/data-dictionary/draft-entity.png" alt="A draft description on the retail_price page">
+          <figcaption><b>Drafts show up where you'd read them.</b> On <code>products.retail_price</code>, the draft
+            sits in a dashed card where the description would be: "Listed retail price of the product, which may
+            differ from the actual sale price." <i>Written by Opus from the definition; not in the model yet.</i> The
+            same controls appear here and in the panel.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/data-dictionary/draft-edited.png" alt="The retail_price draft after a human edit">
+          <figcaption><b>A person knows something Opus doesn't.</b> Edited to "List price of the product in USD,
+            before any discount; what an order line actually charged is <code>order_items.sale_price</code>." The draft
+            remembers what Opus wrote, so it's marked <i>edited</i> and offers <i>Revert to Opus</i>. A
+            <code>#(doc)</code> runs to the end of its line, so the editor keeps it to one line.</figcaption>
+        </figure>
+      </div>
+
+      <h3>3 · Promote and check</h3>
+      <figure class="narrow">
+        <img src="img/data-dictionary/promote-panel.png" alt="The promote panel with the diff, compile check, and write step">
+        <figcaption><b>Promote 25 descriptions.</b> <i>1 · What changes</i>: 25 lines of description across two files,
+          20 in <code>storefront.malloy</code> and 5 in <code>dashboards/overview.malloy</code>. <i>2 · Check it
+            compiles</i>: each file is compiled as it would be after the change, through the package's
+          <code>…/compile</code> endpoint at <code>file</code> scope, and nothing is written; both compile. <i>3 · Write
+            it to the model</i>: <i>Coming soon</i>, with <i>Copy patch</i> and <i>Download .patch</i> in the
+          meantime.</figcaption>
+      </figure>
+
+      <p>Most of the work in promotion is deciding <i>where</i> a description can go. A measure, view or computed
+        dimension gets a <code>#(doc)</code> line above its own definition. A raw table column has no definition to
+        annotate, so the promotion rewrites the source's header into an <code>include</code> block, which needs Malloy's
+        <code>access_modifiers</code> experiment turned on in that file:</p>
+
+      <pre><span class="c">##! experimental.access_modifiers</span>  <span class="c">// added once per file</span>
+source: products is duckdb.table('data/products.parquet') include {
+  #(doc) Cost of the product to the business, used to compute gross margin.
+  `cost`
+  #(doc) List price of the product in USD, before any discount; what an order line actually charged is order_items.sale_price.
+  `retail_price`
+  <span class="c">…</span>
+  *
+} extend {
+  primary_key: product_id
+  <span class="c">…</span></pre>
+
+      <p>When a description can't be written in place, the draft says why instead of failing silently: the entity is
+        defined in a file this package doesn't publish, its definition moved since the dictionary read the model, the
+        source already has an <code>include</code> block, or its declaration spans several lines (a SQL source, say),
+        so there is no single header line to rewrite.</p>
+
+      <div class="callout"><b>Why "Coming soon".</b> Publisher has no endpoint that writes a model file. The dashboard
+        and notebook <code>PUT</code> routes write files under <code>dashboards/</code> and <code>notebooks/</code>
+        (compile first, hash-checked, rolled back on failure), and Part 2's data-app route does the same under
+        <code>public/apps/</code>. A model write with the same rules is the missing piece. Until then, the patch is
+        written for <code>git apply</code> or for a coding agent to apply. (macOS's BSD <code>patch</code> rejects
+        it; <code>git apply</code> accepts it as is.)</div>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="coverage"><span class="num">05</span>Question coverage: a score that moves</h2>
+      <p class="lede">Documentation coverage says whether every field is described. Question coverage asks the more
+        useful question: how much of what people want to know can this model actually answer?</p>
+
+      <figure class="wide">
+        <img src="img/data-dictionary/coverage-writing.png" alt="Question coverage while questions are being written">
+        <figcaption><b>Writing questions.</b> Pick a count (10, 25, 50 or 100) and an optional focus ("retention", "a
+          CFO"), and Opus streams a question set. Each question goes to the judge as soon as the stream has moved past
+          it, so the heat map fills in while questions are still arriving. Themes appear as rows before their cells
+          are judged. <span class="src">/examples/storefront/coverage</span></figcaption>
+      </figure>
+
+      <h3>Writing the questions</h3>
+      <p>Each question comes back typed: its text, who asks it (a persona), a theme, and the two to five
+        <i>concepts</i> a model needs to answer it. Concepts are typed the same way <code>get_context</code> search
+        targets are (<code>measure</code>, <code>dimension</code>, <code>source</code>, <code>view</code>,
+        <code>dimensional_value</code>), so a question can be checked against retrieval concept by concept.</p>
+      <p>The prompt asks for questions a real stakeholder would ask <i>whether or not the model can answer them</i>:
+        some the model should cover, some at its edges, and some that need data it plausibly lacks (costs, targets,
+        marketing, inventory, sentiment, forecasts). A coverage score built only from questions the model can answer
+        would be flattering and useless. Here's a sample of the 25 Opus wrote for <code>storefront</code>, with how each landed in the first run and in the re-score:</p>
+
+      <table>
+        <tr>
+          <th>Theme</th>
+          <th>Persona</th>
+          <th>Question</th>
+          <th>First run</th>
+          <th>Re-score</th>
+        </tr>
+        <tr>
+          <td>Revenue</td>
+          <td>CFO</td>
+          <td>What was our total revenue last month?</td>
+          <td><span class="sw ok"></span>answerable</td>
+          <td><span class="sw ok"></span>answerable</td>
+        </tr>
+        <tr>
+          <td>Regional Performance</td>
+          <td>VP of Sales</td>
+          <td>How does average order value in the West compare to the Northeast?</td>
+          <td><span class="sw ok"></span>answerable</td>
+          <td><span class="sw ok"></span>answerable</td>
+        </tr>
+        <tr>
+          <td>Products</td>
+          <td>Merchandiser</td>
+          <td>What are our top 10 products by units sold?</td>
+          <td><span class="sw part"></span>partial, missing <i>products</i></td>
+          <td><span class="sw ok"></span>answerable</td>
+        </tr>
+        <tr>
+          <td>Profitability</td>
+          <td>Merchandiser</td>
+          <td>Which products have the lowest markup between cost and retail price?</td>
+          <td><span class="sw part"></span>partial, missing <i>markup</i></td>
+          <td><span class="sw part"></span>partial, missing <i>products</i></td>
+        </tr>
+        <tr>
+          <td>Customers</td>
+          <td>Growth lead</td>
+          <td>How many new customers placed their first order each month this year?</td>
+          <td><span class="sw fail"></span>check failed</td>
+          <td><span class="sw part"></span>partial, missing <i>new customer count</i></td>
+        </tr>
+        <tr>
+          <td>Retention</td>
+          <td>—</td>
+          <td>What share of customers acquired last January have placed a repeat order?</td>
+          <td><span class="sw fail"></span>check failed</td>
+          <td><span class="sw part"></span>partial</td>
+        </tr>
+      </table>
+      <p>The rest of the set reaches further: return rates, inventory stockouts, a quarterly target, return on ad
+        spend by channel, a revenue forecast, and customer acquisition cost in the "Southeast". That last one is a good
+        trap: <code>storefront</code>'s regions are South, West, Midwest and Northeast, and there's no ad spend at all.
+        A good judge should say so rather than quietly answering for the South, and in the re-score it did:
+        <i>Southeast</i> shows up in the gap backlog as a missing dimensional value.</p>
+
+      <h3>Judging them</h3>
+      <p>Each question is answered for real. The Worker's <code>/ai/coverage/check</code> runs the same agent as the
+        Ask window, with Publisher's MCP tools and skills and up to 14 tool turns, plus a coverage brief: find the
+        names with <code>get_context</code>, state any interpretation, run the query, say which concept is absent and
+        what the closest field is, and then write three sections, <i>Recommended changes</i>, <i>Exit criteria</i>,
+        and a <i>Verdict</i>:</p>
+      <ul>
+        <li><span class="sw ok"></span><b>Answerable</b>: every measure, grouping and filter is present.</li>
+        <li><span class="sw part"></span><b>Partly answerable</b>: at least one is missing or only approximated.</li>
+        <li><span class="sw miss"></span><b>Missing</b>: the central measure or entity is absent.</li>
+      </ul>
+      <p>An earlier version judged in bulk instead: a cheap classifier (Jev on Workers AI) scored each question's
+        concepts against what <code>get_context</code> retrieved. It was fast, but I could consistently overturn its
+        verdicts by re-running a question as a chat, which meant the heat map and the chat disagreed about the same
+        model. Now the batch uses the same agent as the chat, so a re-score and a <i>Re-run as chat</i> judge a
+        question the same way. Retrieval-only classification is still there as the fallback when Publisher's MCP
+        endpoint is unreachable.</p>
+
+      <h3>The score</h3>
+      <p>The coverage score is the percentage of questions answerable, with a partial answer worth half:</p>
+      <pre>score = round( (answerable + partial / 2) / judged × 100 )</pre>
+      <p>Each score gets a grade chip so the number reads at a glance:</p>
+      <table>
+        <tr>
+          <th>Score</th>
+          <th>Grade</th>
+          <th>Meaning</th>
+        </tr>
+        <tr>
+          <td>90+</td>
+          <td>Excellent</td>
+          <td>Nearly every question is answerable from the model.</td>
+        </tr>
+        <tr>
+          <td>75–89</td>
+          <td>Good</td>
+          <td>Most questions are answerable; a few gaps remain.</td>
+        </tr>
+        <tr>
+          <td>60–74</td>
+          <td>Fair</td>
+          <td>Many questions work, but gaps are common.</td>
+        </tr>
+        <tr>
+          <td>40–59</td>
+          <td>Weak</td>
+          <td>Large parts of the question set cannot be answered.</td>
+        </tr>
+        <tr>
+          <td>&lt;40</td>
+          <td>Poor</td>
+          <td>Most questions cannot be answered from the model.</td>
+        </tr>
+      </table>
+
+      <figure class="wide">
+        <img src="img/data-dictionary/coverage-score.png" alt="Question coverage scored 83, Good, with 16 failed cells">
+        <figcaption><b>The run, as it actually landed: 83, Good, and not to be trusted.</b> 6 answerable, 3 partly
+          answerable, 0 missing, and 16 waiting. The dashed red cells are questions whose check never ran: OpenRouter
+          refused four concurrent Opus agents with "This request would exceed your available credits given your
+          current in-flight requests." The heat map sorts themes weakest first, and every <i>Retention</i>,
+          <i>Orders</i>, <i>Inventory</i>, <i>Marketing</i> and <i>Forecasting</i> question is among the failures.
+          Those are the themes most likely to come back missing, so the real score is lower.</figcaption>
+      </figure>
+
+      <figure class="wide">
+        <img src="img/data-dictionary/rescore-score.png" alt="The same questions re-scored: 62, Fair, down 21">
+        <figcaption><b>Topped up and re-scored: 62, Fair, ↘ −21.</b> The same 25 questions, judged in full in about
+          five minutes: 11 answerable, 9 partly answerable, 5 missing. <i>Inventory</i> and <i>Marketing</i> score
+          0, and <i>Regional Performance</i> is the only theme at 100. Because both runs share a question set, the
+          score carries a delta and a two-point trend line, and <i>Recent runs</i> lists both: 62 at 11:28 and 83 at
+          10:22.</figcaption>
+      </figure>
+
+      <p>I've kept the failed run next to the complete one, because the pair shows two things the UI already gets
+        right and two it doesn't. A failed check is a distinct, visible state (a dashed red cell) rather than a silent
+        "missing", and the score counts only what was judged. But a score over 9 of 25 questions still wears a green
+        <i>Good</i> chip, and the legend calls the failures "waiting". A score with failures should say how much of the
+        set it covers, and offer to retry just those questions. The same is true at the start of a run: one question
+        in, the re-score briefly read 100, <i>Excellent</i>. And the −21 isn't really a change in the model. It's
+        mostly the 16 questions that finally got judged. The delta should compare only questions judged in both
+        runs.</p>
+
+      <h3>The gap backlog</h3>
+      <figure class="wide">
+        <img src="img/data-dictionary/rescore-gaps.png" alt="The gap backlog and the question list">
+        <figcaption><b>Gaps become a backlog.</b> Every concept a verdict judged absent is clustered (lower-cased,
+          stop-words and plurals stripped) and ranked by how many questions need it. <i>Blocks 1</i> means it is the
+          only gap in that many questions, which is the best signal of what to build first. After the re-score it
+          reads like a roadmap for the model, and for the data behind it: <i>customer lifetime revenue</i>,
+          <i>days between orders</i>, <i>return rate</i>, <i>inventory on hand</i>, <i>average review rating</i>,
+          <i>forecasted revenue</i> and <i>holiday season</i> each block a question on their own, followed by
+          revenue targets, ad spend, acquisition cohorts and a fiscal calendar. The list on the right shows every
+          question with its persona, theme, and the concept it's missing, filterable by verdict.</figcaption>
+      </figure>
+
+      <p><i>Add 25 questions</i> grows the same set, and only the new questions are judged. <i>New set</i> starts
+        fresh. <i>Re-score these</i> judges the same questions against the model as it is now. Runs that share a set
+        are comparable, so a re-score shows a delta and a trend sparkline beside the score. The last five runs are kept
+        under <i>Recent runs</i>.</p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="verdict"><span class="num">06</span>Reading a verdict</h2>
+      <p class="lede">A score is only useful if you can see why each question landed where it did, argue with it, and
+        hand the fix to someone.</p>
+
+      <figure class="narrow">
+        <img src="img/data-dictionary/question-sheet.png" alt="The verdict for the gross margin question">
+        <figcaption><b>"What is the gross margin percentage by product category?"</b> asked by a CFO, judged
+          <i>partly answerable</i> in 31.9 seconds. <i>What it needs</i> shows the concepts: gross margin percentage
+          ✓, product category ✓, product cost ✗. Below that is the agent's full answer: a ten-row table (47.3%
+          overall, from 49.8% for Shorts down to 45.6% for Accessories), the Malloy it ran, interpretation and
+          reconciliation checks, recommended changes, exit criteria, and the verdict.</figcaption>
+      </figure>
+
+      <p>This verdict is a good argument to have. The agent <i>answered the question</i>, correctly, from the model's
+        own <code>margin_rate</code> measure. It marked it partial because one of the concepts Opus listed when it
+        wrote the question, "product cost", isn't a named measure; <code>products.cost</code> is only a dimension. Its
+        reasoning is careful, too: it notes that a naive <code>products.cost.sum()</code> through the join returns
+        $831 for Shorts instead of the line-level cost, because Malloy's symmetric aggregation counts each product
+        once, and recommends a <code>total_cost</code> measure on <code>order_items</code> so nobody reaches for the
+        wrong one:</p>
+
+      <pre><span class="c">// Recommended change 1, from the agent's investigation</span>
+#(doc) Cost of goods sold: product cost summed per line item sold
+# currency
+# label="Cost of goods sold"
+measure: total_cost is sum(products.cost)</pre>
+
+      <p>So is it partial? As a question, no. As a model, there's a real gap: a cost-of-goods measure that the next
+        question ("what did we spend on inventory last quarter?") will need. The verdict conflates the two because
+        concepts are written up front, before anyone knows how the model expresses them. A sharper design would score
+        the <i>question</i> on whether it was answered, and keep the concepts as diagnostics that feed the gap backlog
+        on their own.</p>
+
+      <p>The re-score made that point for me. Same question, same model (the documentation patch had been reverted by
+        then), same numbers to the decimal, and this time the verdict was <i>answerable</i>. The agent decided
+        <code>products.cost</code>, already used per line inside <code>gross_margin</code>, was good enough for
+        "product cost", and demoted the <code>total_cost</code> measure to an optional addition. Neither verdict is
+        wrong, which is exactly the problem: a score should not move because the judge read the same evidence
+        differently.</p>
+
+      <div class="pair">
+        <figure>
+          <img src="img/data-dictionary/question-sheet.png" alt="The first verdict: partly answerable">
+          <figcaption><b>First run: partly answerable.</b> "Product cost" ✗, with <code>total_cost</code> as the
+            recommended change.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/data-dictionary/rescore-margin.png" alt="The re-scored verdict: answerable">
+          <figcaption><b>Re-score: answerable.</b> Same table, same 47.3%. "Product cost" ✓ "used per line in
+            <code>gross_margin</code> (there is no separate total-cost measure, which is optional change 1)."
+          </figcaption>
+        </figure>
+      </div>
+
+      <h3>Argue with it, then hand it off</h3>
+      <ul>
+        <li><b>Re-run as chat.</b> Reopens the question as a live conversation with the same agent, so you can push
+          back ("<code>margin_rate</code> already answers this") and watch it reconsider. If it closes with a
+          different verdict, <i>Save verdict</i> replaces the run's verdict and rescores the run.</li>
+        <li><b>Download.</b> Exports the verdict as a markdown brief for a coding agent (or a PDF for a person): the
+          question, the verdict and who judged it, the concepts with batch and chat evidence side by side, the
+          recommended changes, the exit criteria, and the full investigation. The exit criteria are written to be checked by
+          the receiving agent: a named measure exists and <code>get_context</code> returns it, a stated query returns
+          stated numbers, and re-running the coverage check returns answerable.</li>
+        <li><b>Asked in chat.</b> Questions asked in the Ask window land in the heat map on their own, in a separate
+          row, judged from the chat's own answer. Coverage stops being a synthetic benchmark
+          and starts reflecting what people actually wanted to know.</li>
+      </ul>
+
+      <figure class="wide">
+        <img src="img/data-dictionary/question-handoff.png" alt="The Download menu on a verdict">
+        <figcaption><b>The handoff.</b> <i>Markdown (.md), best to hand a coding agent</i>, or <i>PDF</i>. It "includes
+          the verdict, recommended changes, exit criteria and the full investigation." The recommended changes and exit
+          criteria are written for an agent that has Publisher's MCP tools, using the exact names it would pass to
+          them, the same contract the <code>eval-improve</code> skill follows.</figcaption>
+      </figure>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="loop"><span class="num">07</span>Closing the loop on storefront</h2>
+      <p class="lede">The two pages are designed as one loop: coverage finds what's missing, the dictionary helps
+        describe or add it, and a re-score shows whether the number moved.</p>
+
+      <div class="loop">
+        <div class="node">
+          <div class="step">1 · Ask</div>
+          <b>Write or collect questions</b>
+          <span>Generated sets, plus everything people ask in the Ask window.</span>
+        </div>
+        <div class="node">
+          <div class="step">2 · Judge</div>
+          <b>Answer each one for real</b>
+          <span>An agent with Publisher's MCP tools and skills, closing with a verdict.</span>
+        </div>
+        <div class="node">
+          <div class="step">3 · Fix</div>
+          <b>Describe, then model</b>
+          <span>Promote <code>#(doc)</code> drafts; hand modeling gaps to a coding agent.</span>
+        </div>
+        <div class="node future">
+          <div class="step">4 · Re-score</div>
+          <b>Same questions, new model</b>
+          <span>A delta and a trend line on the score.</span>
+        </div>
+      </div>
+      <div class="loop-back">↺ the gap backlog from step 4 is step 3's next to-do list</div>
+
+      <p>I got through the first three steps on <code>storefront</code>. To see the promotion land, I applied the
+        promoted patch to the copy of <code>storefront</code> that Publisher serves from <code>publisher_data/</code>
+        (not to <code>examples/</code>), reloaded the package, took the screenshots below, and then reverted it.</p>
+
+      <div class="pair">
+        <figure>
+          <img src="img/data-dictionary/after-index.png" alt="The dictionary overview after promotion, 100% documented">
+          <figcaption><b>After promotion: Documented 100%.</b> The same overview, with every dot in the tree solid
+            green. Nothing in the dictionary changed to get here; it reads the new <code>#(doc)</code> lines the
+            same way it read the old ones.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/data-dictionary/after-cost.png" alt="The products.cost page after promotion">
+          <figcaption><b><code>products.cost</code>, documented.</b> "Cost of the product to the business, used to
+            compute gross margin." Its content graph now shows it's used by <code>order_items.gross_margin</code>. This
+            is the column at the center of the gross margin verdict above.</figcaption>
+        </figure>
+      </div>
+
+      <p>The re-score I did run is not quite step 4. It judged the same questions against the <i>original</i> model,
+        after I'd reverted the patch, so it measures two other things: the 16 questions the first run never judged,
+        and how much the judge varies from run to run. On the 9 questions judged both times, 2 moved from partial to
+        answerable with nothing changed (94 on those nine, against 83 the first time). The 16 newly judged questions
+        score 44 on their own, and that is what pulls the total down to 62.</p>
+
+      <p>The real step 4, re-scoring with the documentation applied, is the next run. My hypothesis is that the
+        documentation alone moves very little here. A <code>#(doc)</code> on
+        <code>products.cost</code> makes it easier to <i>find</i>, but the gross margin and markup questions want a
+        <i>measure</i>, and the retention, inventory, marketing and forecasting questions want data
+        <code>storefront</code> doesn't have. That's the useful split the loop should make obvious: documentation fixes
+        discoverability, the coding-agent handoff fixes modeling, and some gaps are data the business would have to
+        bring in, which no model edit can fix.</p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="learned"><span class="num">08</span>What the prototype taught me</h2>
+      <p class="lede">Most of the read side came for free from what Publisher already serves. The friction was all on
+        the write side, and in deciding what a verdict should mean.</p>
+
+      <table>
+        <tr>
+          <th>Friction</th>
+          <th>What happened</th>
+          <th>Directional fix</th>
+        </tr>
+        <tr>
+          <td>No way to write a model file</td>
+          <td>Dashboards, notebooks and (in Part 2) data apps have compile-first, hash-checked writes. Models don't, so
+            promotion ends at a patch someone has to apply by hand.</td>
+          <td>A <code>PUT …/models/{path}</code> with the same compile, hash and rollback rules, followed by a
+            package reload</td>
+        </tr>
+        <tr>
+          <td>Columns can't carry a <code>#(doc)</code> without an experiment</td>
+          <td>Describing a raw table column means rewriting its source into an <code>include</code> block and turning on
+            <code>##! experimental.access_modifiers</code>. It's the most common undocumented thing in a new model,
+            and the hardest to annotate.</td>
+          <td>A first-class way to annotate an inherited column (for example <code>#(doc)</code> inside
+            <code>extend</code> by name), or graduate the experiment</td>
+        </tr>
+        <tr>
+          <td>Verdicts are graded against guessed concepts</td>
+          <td>The gross margin question was answered correctly but scored partial, because a concept written before
+            judging ("product cost") isn't a named measure.</td>
+          <td>Score "was it answered?" separately from "which concepts were present?", and feed only the second into
+            the gap backlog</td>
+        </tr>
+        <tr>
+          <td>Batch and chat used to disagree</td>
+          <td>The cheap classifier and a chat re-run reached different verdicts on the same question, so the heat map
+            couldn't be trusted.</td>
+          <td>Done in the prototype: one agent judges both. The cost is time and tokens, so cheap classification
+            should come back only as a pre-filter</td>
+        </tr>
+        <tr>
+          <td>Copy drifted from behavior</td>
+          <td>The coverage page still says each question "is checked against what <code>get_context</code> actually
+            retrieves", which described the old classifier, not the agent that judges now.</td>
+          <td>Say who judged, per run and per verdict (the chips under the controls already do)</td>
+        </tr>
+        <tr>
+          <td>Agent judging is expensive and fragile</td>
+          <td>Four concurrent Opus runs with a 14-turn budget each. On a thin balance, OpenRouter refused 16 of 25
+            checks outright.</td>
+          <td>Retry failed questions on their own, back off on credit errors, show a cost estimate before a run, and
+            label a score that covers 9 of 25 questions as partial</td>
+        </tr>
+        <tr>
+          <td>Verdicts move between runs</td>
+          <td>Re-scoring the same 25 questions against the same model flipped 2 of the 9 earlier verdicts from partial to
+            answerable. The re-score's −21 mixed that noise with 16 questions judged for the first time.</td>
+          <td>Judge each question more than once and show agreement, compare deltas only over questions judged in both
+            runs, and record the model's file hashes on every run so "same model" is checkable</td>
+        </tr>
+        <tr>
+          <td>State lives in the browser</td>
+          <td>Drafts, runs and chat history are in <code>localStorage</code>, so a reviewer can't pick up a teammate's
+            drafts, and coverage history isn't shared.</td>
+          <td>Server-side drafts and runs per package, or, better, the same store the Credible app already uses for
+            saved content</td>
+        </tr>
+      </table>
+
+      <h3>Concepts worth keeping</h3>
+      <ul>
+        <li><b>Views of the model, not just of the data.</b> A dictionary, a content graph and a coverage map are all
+          derived from the package. None needs authoring, and all of them improve when the model does.</li>
+        <li><b>AI drafts, people decide, the compiler checks.</b> The same three-part shape as Part 2's promote flow:
+          nothing AI-written reaches the model without a person accepting it and the package's compiler passing it.
+        </li>
+        <li><b>Hedged drafts are a feature.</b> "Appears to be" is a prompt for a reviewer. A confident description
+          invented from a column name is worse than none, because <code>get_context</code> will rank on it.</li>
+        <li><b>Coverage is the discoverability metric agents need.</b> Documentation percentage measures effort;
+          question coverage measures outcome. It also gives eval work a zero-setup on-ramp: the <code>eval-loop</code>
+          skills want verified goldens, and a coverage run is a cheap way to find which questions deserve one.</li>
+      </ul>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="next"><span class="num">09</span>Where it could go</h2>
+      <p class="lede">Some directions I'd like to explore further, none of them validated with real users yet.</p>
+
+      <ul>
+        <li><b>Coverage on a schedule, from real questions.</b> Nightly re-scores of the questions people actually
+          asked (in the Ask window, over MCP, in the Credible workspace), with the score's trend in the package
+          header. A model change that drops the score is a regression, the same way a failing test is.</li>
+        <li><b>Gaps that open their own pull requests.</b> The handoff brief already has recommended changes and exit
+          criteria. Hand it to <code>eval-improve</code>, have it propose the smallest model edit, and have the next
+          re-score accept or reject it, with a person approving the merge.</li>
+        <li><b>The dictionary as <code>get_context</code>'s front end.</b> The dictionary's pages and
+          <code>get_context</code>'s cards describe the same entities. One shared definition (doc, label, sample
+          values, related content) would make what a person reads and what an agent retrieves the same thing.</li>
+        <li><b>A Model Health card.</b> Fields nothing reads, joins that fan out, ambiguous names, measures with no
+          dashboard, all computable from the same ontology the dictionary builds, and each one a draftable fix.</li>
+        <li><b>Inside the Credible workspace.</b> Part 2's Library lists content; the dictionary explains the model
+          under it. They belong on the same page, and the <code>@</code>-mention composer could mention dictionary
+          entities directly.</li>
+      </ul>
+
+      <h3>What's in the tree</h3>
+      <p>Like Parts 1 and 2, none of this is committed to the repo.</p>
+      <table>
+        <tr>
+          <th>Piece</th>
+          <th>State</th>
+        </tr>
+        <tr>
+          <td>Data Dictionary (<code>packages/app/…/DictionaryPage/</code>, <code>src/ontology/</code>)</td>
+          <td>Working on any package, about 8.6k lines of TypeScript including the ontology builder. Read-only against
+            Publisher; no server change.</td>
+        </tr>
+        <tr>
+          <td>Drafts, review and promotion</td>
+          <td>Drafting, review, the diff and the compile check work end to end. <i>Write to model</i> waits on a model
+            write endpoint; the patch applies with <code>git apply</code>.</td>
+        </tr>
+        <tr>
+          <td>Question Coverage (<code>packages/app/…/CoveragePage/</code>)</td>
+          <td>Working, about 3k lines. Runs, verdicts and investigations are kept per browser (last five runs).</td>
+        </tr>
+        <tr>
+          <td>Ask window and chat (<code>packages/app/…/chat/</code>)</td>
+          <td>Detached chat window with history, model picker and markdown answers; questions file into coverage.</td>
+        </tr>
+        <tr>
+          <td>AI Worker (<code>packages/console-ai</code>)</td>
+          <td>Cloudflare Worker on TanStack AI and OpenRouter, about 1.5k lines: <code>/ai/ask</code>,
+            <code>/ai/dictionary/draft-docs</code>, <code>/ai/coverage/{questions,check,classify}</code>, and chat
+            titles. Loads Publisher's MCP tools and skills as its harness.</td>
+        </tr>
+      </table>
+
+      <p>To reproduce the screenshots, run Publisher (<code>bun run start</code> from <code>packages/server</code>),
+        the Worker (<code>bun run dev</code> from <code>packages/console-ai</code>, with an
+        <code>OPENROUTER_API_KEY</code> in <code>.dev.vars</code>) and the Console on <code>:5180</code>, then
+        <code>node docs/unboxing/capture-data-dictionary.mjs [flow …]</code>. The flows share one browser profile,
+        because drafts and runs live in <code>localStorage</code>.</p>
+
+      <div class="series-foot">
+        <div class="label">Previously</div>
+        <a class="card" href="https://nmcdnld.github.io/publisher/docs/unboxing/credible-demo.html">
+          <span class="eyebrow">← Part 2</span>
+          <span class="title">Credible demo workspace: a front door for Publisher</span>
+          <span class="blurb">A Library filled from the workspace's packages, AI-drafted insights with a person in the
+            loop, and saving anything worth keeping back into the package it came from.</span>
+        </a>
+        <a class="card" href="https://nmcdnld.github.io/publisher/docs/unboxing/index.html">
+          <span class="eyebrow">← Part 1</span>
+          <span class="title">Unboxing Publisher and adding Question mode</span>
+          <span class="blurb">Two example packages rebuilt on Publisher, what building them taught me, and a
+            question-first way to build a query in the Explorer.</span>
+        </a>
+        <div class="colophon">Publisher unboxing · Part 3 · Noah Mac · Oct 4 - Oct 9, 2026</div>
+      </div>
+    </main>
+  </div>
+</body>
+
+</html>

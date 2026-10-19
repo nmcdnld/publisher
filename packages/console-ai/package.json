@@ -1,0 +1,26 @@
+{
+   "name": "@malloy-publisher/console-ai",
+   "description": "Cloudflare Worker that gives Console tiles (Data Dictionary, Question Coverage Map, Ask) their model calls: OpenRouter through TanStack AI (chat models and Jev), and Publisher's MCP tools and skills",
+   "version": "0.0.1",
+   "private": true,
+   "type": "module",
+   "scripts": {
+      "dev": "wrangler dev --port 8790",
+      "deploy": "wrangler deploy",
+      "typecheck": "tsc --noEmit",
+      "cf-typegen": "wrangler types"
+   },
+   "dependencies": {
+      "@cfworker/json-schema": "^4.1.1",
+      "@modelcontextprotocol/client": "^2.3.1",
+      "@tanstack/ai": "^0.65.0",
+      "@tanstack/ai-mcp": "^0.8.0",
+      "@tanstack/ai-openrouter": "^0.21.0",
+      "zod": "^4.6.5"
+   },
+   "devDependencies": {
+      "@cloudflare/workers-types": "^4.20260702.1",
+      "typescript": "^5.8.3",
+      "wrangler": "^4.147.0"
+   }
+}

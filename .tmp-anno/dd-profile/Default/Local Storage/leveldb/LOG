@@ -1,0 +1,5 @@
+2026/10/09-11:34:15.339 b1370f Reusing MANIFEST /Users/noahmac/dev/publisher/.tmp-anno/dd-profile/Default/Local Storage/leveldb/MANIFEST-000001
+2026/10/09-11:34:15.340 b1370f Recovering log #4
+2026/10/09-11:34:15.340 b1370f Level-0 table #6: started
+2026/10/09-11:34:15.347 b1370f Level-0 table #6: 109284 bytes OK
+2026/10/09-11:34:15.349 b1370f Delete type=0 #4

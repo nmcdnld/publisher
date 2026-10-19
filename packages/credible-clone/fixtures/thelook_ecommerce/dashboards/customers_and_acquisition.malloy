@@ -1,0 +1,63 @@
+## artifact { layout=grid title="Customers and acquisition" tiles=["customer_tiles -> kpis", "signup_tiles -> signups_by_month", "customer_tiles -> by_channel", "customer_tiles -> by_age_group", "customer_tiles -> by_gender_department", "customer_tiles -> by_country"] } dashboard { columns=12 }
+## theme.palette.series = ["#1f6fd1", "#0b3d91", "#5b9bea", "#a3c8f5", "#173a6b", "#7fb2ef"]
+## theme.palette.value.light = "#1f6fd1"
+## theme.palette.value.dark = "#5b9bea"
+import "../thelook.malloy"
+
+source: customer_tiles is order_items extend {
+  # colspan=12
+  # label="Buyers (Jan 2019 to Mar 2026)"
+  # big_value
+  view: kpis is {
+    aggregate: buyer_count, order_count, avg_order_value, revenue
+  }
+
+  # colspan=6
+  # break
+  # label="Buyers and revenue by acquisition channel"
+  # bar_chart { y=buyer_count }
+  view: by_channel is {
+    group_by: users.acquisition_source
+    aggregate: buyer_count, revenue, avg_order_value, return_rate
+    order_by: buyer_count desc
+  }
+
+  # colspan=6
+  # label="Revenue by customer age group"
+  # bar_chart { y=revenue }
+  view: by_age_group is {
+    group_by: users.age_group
+    aggregate: revenue, buyer_count, avg_order_value
+    order_by: age_group
+  }
+
+  # colspan=6
+  # break
+  # label="Revenue by gender and department"
+  view: by_gender_department is {
+    group_by: users.gender, products.department
+    aggregate: revenue, buyer_count, avg_order_value
+    order_by: revenue desc
+  }
+
+  # colspan=6
+  # label="Revenue by customer country"
+  # bar_chart { y=revenue }
+  view: by_country is {
+    group_by: users.country
+    aggregate: revenue, buyer_count, avg_order_value
+    order_by: revenue desc
+  }
+}
+
+source: signup_tiles is users extend {
+  # colspan=12
+  # break
+  # label="New customer sign-ups by month"
+  # line_chart { y=customer_count }
+  view: signups_by_month is {
+    group_by: signup_month is signed_up_at.month
+    aggregate: customer_count
+    order_by: signup_month
+  }
+}

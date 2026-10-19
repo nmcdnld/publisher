@@ -61,6 +61,15 @@ export default function BreadcrumbNav() {
    const params = useParams();
    const modelPath = params["*"];
    const navigate = useRouterClickHandler();
+   // A dictionary page reads as dictionary › order_items.margin_rate, not as one long
+   // path; `""` is the dictionary index itself.
+   const dictionaryEntity =
+      modelPath === "dictionary"
+         ? ""
+         : modelPath?.startsWith("dictionary/") &&
+             !/\.malloy(nb)?$/.test(modelPath)
+           ? modelPath.slice("dictionary/".length).replace(/^.*?:/, "")
+           : undefined;
 
    if (!params.environmentName && !params.packageName && !modelPath) {
       return null;
@@ -95,9 +104,21 @@ export default function BreadcrumbNav() {
                />
             )}
 
-            {modelPath && (
+            {dictionaryEntity !== undefined && (
                <BreadcrumbChip
-                  label={modelPath}
+                  label="dictionary"
+                  onClick={(event) =>
+                     navigate(
+                        `/${params.environmentName}/${params.packageName}/dictionary`,
+                        event,
+                     )
+                  }
+               />
+            )}
+
+            {modelPath && dictionaryEntity !== "" && (
+               <BreadcrumbChip
+                  label={dictionaryEntity ?? modelPath}
                   onClick={(event) =>
                      navigate(
                         `/${params.environmentName}/${params.packageName}/${modelPath}`,

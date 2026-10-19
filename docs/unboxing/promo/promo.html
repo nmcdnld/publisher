@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chat, in context — promo</title>
+<style>
+  :root {
+    --ink: #f4f3ef;
+    --dim: #9aa0ad;
+    --indigo: #7b7cff;
+    --copper: #e0956b;
+    --grad: linear-gradient(100deg, #9d9cff 0%, #7b7cff 35%, #e0956b 100%);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { background: #000; overflow: hidden; }
+  body { display: grid; place-items: center; height: 100vh; }
+  #stage {
+    position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background: #0b0d12; color: var(--ink);
+    font-family: "SF Pro Display", -apple-system, system-ui, sans-serif;
+    transform-origin: center;
+  }
+  body.render #stage { transform: none !important; }
+  .abs { position: absolute; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(120px); opacity: .55; }
+  #b1 { width: 900px; height: 900px; background: #3b3dbf; }
+  #b2 { width: 760px; height: 760px; background: #8a4a2c; }
+  #grid {
+    inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+  }
+  .grad { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  #intro { inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #intro .line { font-size: 168px; font-weight: 800; letter-spacing: -0.045em; line-height: 1; display: flex; gap: 38px; }
+  #intro .w { display: inline-block; will-change: transform; padding-bottom: 0.08em; }
+  #intro .sub { margin-top: 44px; font-size: 34px; color: var(--dim); font-weight: 500; letter-spacing: -0.01em; }
+
+  .mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 5px solid currentColor; padding: 2px 16px 6px; font-weight: 800; letter-spacing: -0.03em;
+    font-size: 40px; line-height: 1;
+  }
+  #introMark { top: 70px; left: 50%; transform: translateX(-50%); }
+
+  #head { left: 297px; top: 44px; width: 1326px; }
+  #eyebrow {
+    font: 600 20px/1 Menlo, Monaco, monospace; letter-spacing: .14em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 14px; height: 24px;
+  }
+  #eyebrow .num { color: #0b0d12; background: var(--grad); padding: 5px 9px 4px; border-radius: 6px; }
+  #title { margin-top: 16px; font-size: 62px; font-weight: 800; letter-spacing: -0.035em; line-height: 1.05; height: 70px; white-space: nowrap; }
+  #sub { margin-top: 12px; font-size: 27px; color: #c4c7d0; font-weight: 500; height: 34px; white-space: nowrap; }
+  .tw { display: inline-block; white-space: pre; }
+  kbd {
+    font: 600 19px/1 Menlo, Monaco, monospace; padding: 4px 9px 5px; border-radius: 7px;
+    border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: var(--ink);
+  }
+
+  #winWrap { left: 297px; top: 226px; width: 1326px; height: 829px; perspective: 1800px; }
+  #win {
+    position: absolute; inset: 0; border-radius: 18px; overflow: hidden; background: #fff;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 40px 120px rgba(0,0,0,.6), 0 0 160px rgba(123,124,255,.18);
+    transform-origin: 50% 100%;
+  }
+  #cam { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; transform-origin: 0 0; }
+  #cam img { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; }
+  .redact { position: absolute; backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); border-radius: 4px; }
+  #typing { position: absolute; font: 400 19.5px/1 -apple-system, system-ui, sans-serif; color: #1c1c1e; white-space: pre; display: flex; align-items: center; }
+  #caret { display: inline-block; width: 2px; height: 22px; background: #4f46e5; margin-left: 1px; }
+  #sweep {
+    position: absolute; top: 0; bottom: 0; width: 420px; pointer-events: none;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.55), transparent);
+    mix-blend-mode: soft-light;
+  }
+
+  #overlay { left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; }
+  .ring {
+    position: absolute; border-radius: 12px; border: 3px solid var(--indigo);
+    box-shadow: 0 0 0 6px rgba(123,124,255,.22), 0 0 40px rgba(123,124,255,.55);
+  }
+  #cursor { position: absolute; width: 34px; height: 34px; filter: drop-shadow(0 3px 6px rgba(0,0,0,.35)); }
+  #pulse { position: absolute; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; border: 3px solid var(--indigo); }
+  .tag {
+    position: absolute; padding: 9px 15px; border-radius: 999px; font-size: 21px; font-weight: 600;
+    background: rgba(14,16,24,.88); color: var(--ink); border: 1px solid rgba(255,255,255,.18);
+    box-shadow: 0 10px 30px rgba(0,0,0,.35); white-space: nowrap; display: flex; align-items: center; gap: 10px;
+  }
+  .tag .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--copper); }
+
+  #outro { inset: 0; }
+  #trio { position: absolute; left: 260px; top: 300px; font-size: 128px; font-weight: 800; letter-spacing: -0.045em; line-height: 1.08; }
+  #trio div { will-change: transform; }
+  #final { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #final .big { font-size: 190px; font-weight: 850; letter-spacing: -0.055em; line-height: 1; padding-bottom: .1em; }
+  #final .row { margin-top: 40px; display: flex; align-items: center; gap: 28px; font-size: 30px; color: var(--dim); font-weight: 500; }
+  #flash { inset: 0; background: radial-gradient(circle at 50% 50%, rgba(157,156,255,.5), transparent 60%); }
+  #fade { inset: 0; background: #000; }
+  #controls { position: fixed; left: 16px; bottom: 12px; color: #888; font: 12px ui-monospace, monospace; }
+  body.render #controls { display: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="blob" id="b1"></div>
+  <div class="blob" id="b2"></div>
+  <div class="abs" id="grid"></div>
+
+  <div class="abs" id="intro">
+    <div class="line">
+      <span class="w">Ask</span><span class="w">right</span><span class="w">where</span><span class="w grad">you&nbsp;are.</span>
+    </div>
+    <div class="sub">Introducing the new chat experience in Credible</div>
+  </div>
+  <div class="abs mark" id="introMark">credible</div>
+
+  <div class="abs" id="head">
+    <div id="eyebrow"><span class="num" id="num">01</span><span id="section">The rail</span></div>
+    <div id="title"></div>
+    <div id="sub"></div>
+  </div>
+
+  <div class="abs" id="winWrap">
+    <div id="win">
+      <div id="cam">
+        <img id="imgA" alt="">
+        <img id="imgB" alt="">
+        <div class="redact" id="rd1"></div>
+        <div class="redact" id="rd2"></div>
+        <div id="typing"><span id="typed"></span><span id="caret"></span></div>
+      </div>
+      <div id="sweep"></div>
+    </div>
+  </div>
+
+  <div class="abs" id="overlay">
+    <div class="ring" id="ring"></div>
+    <div class="tag" id="tag"></div>
+    <div id="pulse"></div>
+    <svg id="cursor" viewBox="0 0 24 24"><path d="M5 2.5v17.2l4.6-4.3 2.9 6.6 3.1-1.4-2.9-6.5h6.3z" fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+  </div>
+
+  <div class="abs" id="outro">
+    <div id="trio"><div>Find it.</div><div>Ask it.</div><div class="grad">Get back to it.</div></div>
+    <div id="final">
+      <div class="big grad">Chat, in context.</div>
+      <div class="row"><span class="mark" style="font-size:30px;border-width:4px;color:var(--ink)">credible</span><span>Sidebar chats · margin answers · a way back</span></div>
+    </div>
+  </div>
+  <div class="abs" id="flash"></div>
+  <div class="abs" id="fade"></div>
+</div>
+<div id="controls">space: play/pause · ←/→: seek · <span id="clock"></span></div>
+
+<script>
+const DURATION = 34;
+const IMG = (n) => `../img/sidebar-chat/${n}.png`;
+
+// ---- easing helpers ------------------------------------------------------
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, p) => a + (b - a) * p;
+const ease = (p) => (p < 0.5 ? 4 * p * p * p : 1 - (-2 * p + 2) ** 3 / 2);
+const out = (p) => 1 - (1 - p) ** 3;
+const back = (p) => { const c = 1.7; return 1 + (c + 1) * (p - 1) ** 3 + c * (p - 1) ** 2; };
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const win = (t, a, b, f = 0.25) => Math.min(prog(t, a, a + f), 1 - prog(t, b - f, b));
+
+// Piecewise keyframes: [[t, ...values]], eased between neighbours.
+function keys(list, t) {
+  if (t <= list[0][0]) return list[0].slice(1);
+  for (let i = 1; i < list.length; i++) {
+    if (t <= list[i][0]) {
+      const [t0, ...a] = list[i - 1];
+      const [t1, ...b] = list[i];
+      const p = ease(prog(t, t0, t1));
+      return a.map((v, k) => lerp(v, b[k], p));
+    }
+  }
+  return list[list.length - 1].slice(1);
+}
+
+// ---- the edit -----------------------------------------------------------
+// Image coordinates below are CSS px in the 1440x900 screenshots.
+const SHOTS = [
+  [4.0, "home", 0],
+  [5.6, "rail-hover", 0.25],
+  [7.45, "new-chat", 0.3],
+  [8.8, "filter-chip", 0.3],
+  [10.0, "dashboard", 0.35],
+  [13.4, "side-streaming", 0.3],
+  [15.0, "side-answer", 1.3, "wipe"],
+  [17.2, "side-stuck", 0.35],
+  [18.8, "notebook-answer", 0.4],
+  [20.0, "side-answer", 0.35],
+  [21.2, "full-chat", 0.35],
+  [24.2, "back-to-dashboard", 0.35],
+  [25.6, "filter-report", 0.35],
+];
+
+const CAM = [
+  [4.0, 720, 450, 1], [5.3, 720, 450, 1], [5.9, 330, 280, 1.3], [7.2, 330, 280, 1.3],
+  [7.8, 720, 450, 1], [8.6, 720, 450, 1], [9.2, 400, 260, 1.45], [9.9, 400, 260, 1.45],
+  [10.3, 720, 450, 1], [10.8, 720, 450, 1], [11.3, 760, 810, 1.75], [13.2, 760, 810, 1.75],
+  [13.8, 720, 450, 1], [14.9, 720, 450, 1], [15.5, 1180, 400, 1.5], [17.0, 1180, 400, 1.5],
+  [17.5, 1180, 330, 1.4], [18.6, 1180, 330, 1.4], [19.2, 1180, 800, 1.6], [19.9, 1180, 800, 1.6],
+  [20.5, 1240, 220, 1.55], [21.1, 1240, 220, 1.55], [21.6, 720, 450, 1], [21.9, 720, 450, 1],
+  [22.5, 620, 160, 1.85], [24.0, 620, 160, 1.85], [24.6, 720, 450, 1], [25.7, 720, 450, 1],
+  [26.3, 380, 250, 1.5], [28.0, 380, 250, 1.5],
+];
+
+const CURSOR = [
+  [4.8, 950, 620], [5.4, 32, 159], [6.6, 32, 159], [7.1, 110, 160], [7.6, 110, 160], [8.4, 210, 70], [9.8, 210, 70],
+  [10.2, 1150, 560], [10.9, 640, 800], [11.0, 640, 800], [11.6, 930, 870], [12.85, 960, 872], [13.2, 1024, 848], [13.8, 1024, 848],
+  [20.0, 1050, 520], [20.8, 1358, 105], [21.6, 1358, 105], [22.6, 900, 330], [23.6, 560, 86], [24.6, 560, 86],
+];
+const CURSOR_ON = [[4.8, 9.8], [10.2, 13.8], [20.0, 24.8]];
+const CLICKS = [7.3, 10.95, 13.25, 21.0, 24.0];
+
+const RINGS = [
+  [5.95, 7.3, [14, 138, 322, 183]],
+  [7.8, 8.7, [300, 18, 388, 62]],
+  [9.2, 9.95, [87, 149, 347, 176]],
+  [13.7, 14.9, [1005, 136, 1426, 242]],
+  [15.5, 17.0, [1015, 288, 1420, 434]],
+  [17.5, 18.7, [1005, 118, 1426, 226]],
+  [19.25, 19.95, [1042, 832, 1232, 864]],
+  [20.5, 21.05, [1340, 88, 1376, 122]],
+  [22.5, 23.95, [432, 66, 720, 106]],
+  [26.3, 27.9, [87, 147, 352, 178]],
+];
+
+const TAGS = [
+  [6.3, 7.3, [318, 36], "Pin it with <kbd>⌘B</kbd>"],
+  [9.35, 9.95, [347, 162], "<span class=dot></span>Filter by package"],
+  [13.9, 14.9, [1010, 300], "<span class=dot></span>Answers in the margin"],
+  [17.6, 18.7, [1005, 172], "<span class=dot></span>Question stays pinned", "left"],
+  [19.3, 19.95, [1042, 848], "<span class=dot></span>Scoped to this notebook", "left"],
+  [22.7, 23.95, [720, 86], "<span class=dot></span>Remembers where it started"],
+  [26.5, 27.9, [352, 162], "<span class=dot></span>Filter by report"],
+];
+
+const SECTIONS = [
+  [4.0, 10.0, "01", "The rail", "A home for every chat.", [
+    [4.0, "Hover the rail to open it. Every chat is one click away."],
+    [7.5, "Start fresh, or pick up any earlier thread."],
+    [8.8, "Search and filter by package, report, or what it made."],
+  ]],
+  [10.0, 20.0, "02", "In the margin", "Ask from the page you're on.", [
+    [10.0, "Every dashboard and notebook has a composer."],
+    [13.4, "The answer docks beside the dashboard. Nothing moves."],
+    [17.2, "Your question stays pinned while you read."],
+    [18.8, "Notebooks, too."],
+  ]],
+  [20.0, 28.2, "03", "Full page", "Go big. Then go back.", [
+    [20.0, "One click opens the chat full page."],
+    [21.8, "It remembers where it started."],
+    [24.2, "One click back, with the chat still open."],
+    [25.6, "And find it again by the report it came from."],
+  ]],
+];
+
+const QUESTION = "Which product category has the highest gross margin?";
+const TYPE_FROM = 11.15, TYPE_TO = 12.85;
+
+// ---- DOM ---------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+const imgs = {};
+const W = 1326, H = 829, S = W / 1440;
+const WIN_X = 297, WIN_Y = 226;
+let composerBg = "#fbfaf8";
+
+function setWords(el, text, t, start) {
+  if (el.dataset.text !== text) {
+    el.dataset.text = text;
+    el.innerHTML = text.split(/(\s+)/).map((w) => `<span class="tw">${w}</span>`).join("");
+  }
+  [...el.children].forEach((s, i) => {
+    const p = out(prog(t, start + i * 0.025, start + i * 0.025 + 0.35));
+    s.style.opacity = p;
+    s.style.transform = `translateY(${(1 - p) * 26}px)`;
+    s.style.filter = `blur(${(1 - p) * 6}px)`;
+  });
+}
+
+function camAt(t) {
+  const [fx, fy, z] = keys(CAM, t);
+  const z2 = z * S;
+  let tx = W / 2 - fx * z2, ty = H / 2 - fy * z2;
+  tx = clamp(tx, W - 1440 * z2, 0);
+  ty = clamp(ty, H - 900 * z2, 0);
+  return { tx, ty, z: z2 };
+}
+const toScreen = (c, x, y) => [WIN_X + c.tx + x * c.z, WIN_Y + c.ty + y * c.z];
+
+function seek(t) {
+  // background drift
+  $("b1").style.transform = `translate(${-200 + Math.sin(t * 0.35) * 160}px, ${-260 + Math.cos(t * 0.27) * 120}px)`;
+  $("b2").style.transform = `translate(${1300 + Math.cos(t * 0.3) * 180}px, ${500 + Math.sin(t * 0.4) * 140}px)`;
+
+  // intro
+  const words = [...document.querySelectorAll("#intro .w")];
+  const leave = ease(prog(t, 3.35, 3.95));
+  words.forEach((w, i) => {
+    const p = back(prog(t, 0.5 + i * 0.5, 0.5 + i * 0.5 + 0.38));
+    w.style.opacity = clamp(prog(t, 0.5 + i * 0.5, 0.5 + i * 0.5 + 0.12)) * (1 - leave);
+    w.style.transform = `translateY(${(1 - p) * 90 - leave * 160}px) scale(${0.85 + 0.15 * p})`;
+    w.style.filter = `blur(${(1 - clamp(p)) * 12 + leave * 10}px)`;
+  });
+  const sub = document.querySelector("#intro .sub");
+  sub.style.opacity = out(prog(t, 2.55, 3.0)) * (1 - leave);
+  sub.style.transform = `translateY(${(1 - out(prog(t, 2.55, 3.0))) * 20 - leave * 120}px)`;
+  $("introMark").style.opacity = win(t, 0.1, 3.8, 0.5) * 0.9;
+
+  // section headers
+  const sec = SECTIONS.find(([a, b]) => t >= a && t < b) ?? (t < 4 ? SECTIONS[0] : SECTIONS[2]);
+  const [sa, sb, num, name, title, subs] = sec;
+  const headVis = t >= 4 && t < 28.2 ? 1 - ease(prog(t, 27.85, 28.2)) : 0;
+  $("head").style.opacity = headVis;
+  $("num").textContent = num;
+  $("section").textContent = name;
+  const ep = out(prog(t, sa, sa + 0.4));
+  $("eyebrow").style.opacity = ep;
+  $("eyebrow").style.transform = `translateX(${(1 - ep) * -30}px)`;
+  setWords($("title"), title, t, sa + 0.05);
+  const subNow = [...subs].reverse().find(([at]) => t >= at) ?? subs[0];
+  setWords($("sub"), subNow[1], t, subNow[0] + 0.1);
+
+  // window entrance / exit
+  const enter = out(prog(t, 3.75, 4.6));
+  const exit = ease(prog(t, 27.95, 28.55));
+  $("winWrap").style.opacity = t < 3.75 ? 0 : enter * (1 - exit);
+  $("win").style.transform =
+    `translateY(${(1 - enter) * 220 + exit * 90}px) rotateX(${(1 - enter) * 22}deg) scale(${(0.9 + 0.1 * enter) * (1 - 0.08 * exit)})`;
+  $("win").style.filter = `blur(${exit * 8}px)`;
+
+  // shots
+  let i = 0;
+  for (let k = 0; k < SHOTS.length; k++) if (t >= SHOTS[k][0]) i = k;
+  const [st, src, fade, mode] = SHOTS[i];
+  const prev = SHOTS[Math.max(0, i - 1)][1];
+  const p = fade ? clamp((t - st) / fade) : 1;
+  setImg($("imgA"), p >= 1 ? src : prev);
+  setImg($("imgB"), src);
+  const B = $("imgB");
+  if (mode === "wipe") {
+    B.style.opacity = 1;
+    const wp = ease(p) * 100;
+    B.style.clipPath = `inset(0 0 ${100 - wp}% 0)`;
+  } else {
+    B.style.clipPath = "none";
+    B.style.opacity = p;
+  }
+  // a little "settle" on each cut
+  const bump = 1 + 0.012 * (1 - out(clamp((t - st) / 0.5)));
+
+  const c = camAt(t);
+  $("cam").style.transform = `translate(${c.tx}px, ${c.ty}px) scale(${c.z * bump})`;
+
+  // redact the account email on the shots that show it
+  const showsEmail = src === "home" || src === "rail-hover" || prev === "rail-hover" || prev === "home";
+  placeRect($("rd1"), [560, 212, 750, 236], showsEmail);
+  placeRect($("rd2"), [62, 856, 252, 884], src === "rail-hover" || (prev === "rail-hover" && p < 1));
+
+  // typing in the dashboard composer
+  const ty = $("typing");
+  const typingOn = src === "dashboard" && t >= 10.9;
+  ty.style.display = typingOn ? "flex" : "none";
+  if (typingOn) {
+    Object.assign(ty.style, { left: "466px", top: "777px", width: "560px", height: "34px", background: composerBg });
+    const n = Math.round(QUESTION.length * clamp((t - TYPE_FROM) / (TYPE_TO - TYPE_FROM)));
+    $("typed").textContent = QUESTION.slice(0, n);
+    $("caret").style.opacity = t > TYPE_TO && Math.floor(t * 3) % 2 ? 0 : 1;
+  }
+
+  // section sweep
+  const sw = [10.0, 20.0].map((a) => prog(t, a, a + 0.7)).find((v) => v > 0 && v < 1);
+  $("sweep").style.display = sw ? "block" : "none";
+  if (sw) $("sweep").style.transform = `translateX(${lerp(-500, W + 100, ease(sw))}px)`;
+
+  // rings
+  const ring = $("ring");
+  const r = RINGS.find(([a, b]) => t >= a && t <= b);
+  if (r && t < 27.95) {
+    const [a, b, [x1, y1, x2, y2]] = r;
+    const [sx1, sy1] = toScreen(c, x1, y1);
+    const [sx2, sy2] = toScreen(c, x2, y2);
+    const v = win(t, a, b, 0.22);
+    const pad = 8 + (1 - out(prog(t, a, a + 0.35))) * 24;
+    Object.assign(ring.style, {
+      display: "block", opacity: v,
+      left: `${sx1 - pad}px`, top: `${sy1 - pad}px`,
+      width: `${sx2 - sx1 + pad * 2}px`, height: `${sy2 - sy1 + pad * 2}px`,
+    });
+  } else ring.style.display = "none";
+
+  // tags
+  const tag = $("tag");
+  const g = TAGS.find(([a, b]) => t >= a && t <= b);
+  if (g) {
+    const [a, b, [x, y], html, side] = g;
+    const [sx, sy] = toScreen(c, x, y);
+    if (tag.dataset.html !== html) { tag.dataset.html = html; tag.innerHTML = html; }
+    const v = win(t, a, b, 0.2);
+    const pp = back(prog(t, a, a + 0.35));
+    tag.style.display = "flex";
+    tag.style.opacity = v;
+    const w = tag.offsetWidth;
+    const left = side === "left" ? sx - w - 26 : sx + 26;
+    tag.style.left = `${left}px`;
+    tag.style.top = `${sy - 22}px`;
+    tag.style.transform = `translateX(${(1 - pp) * (side === "left" ? 30 : -30)}px) scale(${0.85 + 0.15 * pp})`;
+  } else tag.style.display = "none";
+
+  // cursor
+  const cur = $("cursor");
+  const onR = CURSOR_ON.find(([a, b]) => t >= a && t <= b);
+  if (onR) {
+    const [cx, cy] = keys(CURSOR, t);
+    const [sx, sy] = toScreen(c, cx, cy);
+    const clickNear = CLICKS.map((k) => t - k).find((d) => d > -0.08 && d < 0.12);
+    const press = clickNear !== undefined ? 0.82 : 1;
+    cur.style.display = "block";
+    cur.style.opacity = win(t, onR[0], onR[1], 0.2);
+    cur.style.transform = `translate(${sx - 8}px, ${sy - 4}px) scale(${press})`;
+  } else cur.style.display = "none";
+  const pulse = $("pulse");
+  const click = CLICKS.find((k) => t >= k && t < k + 0.5);
+  if (click !== undefined) {
+    const [cx, cy] = keys(CURSOR, click);
+    const [sx, sy] = toScreen(c, cx, cy);
+    const pp = out((t - click) / 0.5);
+    Object.assign(pulse.style, {
+      display: "block", left: `${sx}px`, top: `${sy}px`, opacity: 1 - pp,
+      transform: `scale(${0.3 + pp * 1.3})`,
+    });
+  } else pulse.style.display = "none";
+
+  // outro
+  const trio = [...document.querySelectorAll("#trio div")];
+  const trioOut = ease(prog(t, 29.75, 30.15));
+  trio.forEach((d, k) => {
+    const a = 28.5 + k * 0.5;
+    const pp = back(prog(t, a, a + 0.32));
+    d.style.opacity = clamp(prog(t, a, a + 0.08)) * (1 - trioOut);
+    d.style.transform = `translateX(${(1 - pp) * -120 + trioOut * 80}px)`;
+    d.style.filter = `blur(${trioOut * 10}px)`;
+  });
+  const fin = $("final");
+  const fp = back(prog(t, 30.1, 30.6));
+  fin.style.opacity = clamp(prog(t, 30.1, 30.25));
+  fin.querySelector(".big").style.transform = `scale(${0.8 + 0.2 * fp}) translateY(${(1 - fp) * 30}px)`;
+  const row = fin.querySelector(".row");
+  const rp = out(prog(t, 32.0, 32.5));
+  row.style.opacity = rp;
+  row.style.transform = `translateY(${(1 - rp) * 24}px)`;
+  const hits = [28.5, 29.0, 29.5, 32.0];
+  $("flash").style.opacity = Math.max(0, ...hits.map((h) => (t >= h ? Math.exp(-(t - h) / 0.18) * (h === 32 ? 1 : 0.45) : 0)));
+  $("fade").style.opacity = prog(t, 33.3, 34);
+}
+
+function setImg(el, name) {
+  if (el.dataset.name !== name) { el.dataset.name = name; el.src = imgs[name].src; }
+}
+function placeRect(el, [x1, y1, x2, y2], on) {
+  el.style.display = on ? "block" : "none";
+  Object.assign(el.style, { left: `${x1}px`, top: `${y1}px`, width: `${x2 - x1}px`, height: `${y2 - y1}px` });
+}
+
+async function load() {
+  const names = [...new Set(SHOTS.map((s) => s[1]))];
+  await Promise.all(names.map(async (n) => {
+    const im = new Image();
+    im.src = IMG(n);
+    await im.decode();
+    imgs[n] = im;
+  }));
+  // Match the typing overlay to the composer's own background.
+  try {
+    const cv = document.createElement("canvas");
+    cv.width = 1440; cv.height = 900;
+    const ctx = cv.getContext("2d");
+    ctx.drawImage(imgs.dashboard, 0, 0, 1440, 900);
+    const [r, g, b] = ctx.getImageData(1000, 795, 1, 1).data;
+    composerBg = `rgb(${r},${g},${b})`;
+  } catch {}
+  await document.fonts.ready;
+  seek(0);
+}
+window.ready = load();
+window.seek = seek;
+window.DURATION = DURATION;
+
+// ---- realtime preview ---------------------------------------------------
+if (new URLSearchParams(location.search).has("render")) {
+  document.body.classList.add("render");
+} else {
+  const fit = () => { $("stage").style.transform = `scale(${Math.min(innerWidth / 1920, innerHeight / 1080)})`; };
+  addEventListener("resize", fit); fit();
+  const audio = new Audio("music.wav");
+  let playing = false, t0 = 0, base = 0;
+  const now = () => (playing ? base + (performance.now() - t0) / 1000 : base);
+  const tick = () => {
+    const t = now() % DURATION;
+    seek(t);
+    $("clock").textContent = t.toFixed(2) + "s";
+    requestAnimationFrame(tick);
+  };
+  window.ready.then(tick);
+  addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      base = now() % DURATION; playing = !playing; t0 = performance.now();
+      if (playing) { audio.currentTime = base; audio.play().catch(() => {}); } else audio.pause();
+    }
+    if (e.code === "ArrowRight" || e.code === "ArrowLeft") {
+      base = clamp(now() + (e.code === "ArrowRight" ? 1 : -1), 0, DURATION); t0 = performance.now();
+      audio.currentTime = base;
+    }
+  });
+}
+</script>
+</body>
+</html>

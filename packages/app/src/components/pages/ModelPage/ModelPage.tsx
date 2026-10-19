@@ -14,10 +14,15 @@ import {
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
-import { useParams } from "react-router-dom";
+import { lazy } from "react";
+import { Navigate, useParams } from "react-router-dom";
+import { usePrototypeFeatures } from "../../../prototypeFeatures";
 import { MONO_FONT_FAMILY } from "../../../theme/colors";
 import NotebookPage from "../NotebookPage/NotebookPage";
 import RoutedDocument from "./RoutedDocument";
+
+const DictionaryPage = lazy(() => import("../DictionaryPage/DictionaryPage"));
+const CoveragePage = lazy(() => import("../CoveragePage/CoveragePage"));
 
 function ModelPage() {
    const params = useParams();
@@ -29,6 +34,7 @@ function ModelPage() {
    // Parameter values ride in the query string, so a Model's Run is a
    // shareable link, the same as a dashboard's or a notebook's.
    const { params: givens, onGivensChange } = useGivenUrlParams();
+   const features = usePrototypeFeatures();
    if (!params.environmentName) {
       return (
          <div>
@@ -45,6 +51,38 @@ function ModelPage() {
    }
 
    const wrapperSx = { p: 3, maxWidth: 1200, mx: "auto" } as const;
+
+   // `dictionary` is the package's Data Dictionary and `dictionary/<entity id>` one of
+   // its pages; `coverage` is its Question Coverage Map. Same rule as the
+   // dashboards branch below: a real model file at such a path still opens.
+   // A module switched off in Settings sends its address back to the package.
+   const isModelFile =
+      modelPath?.endsWith(".malloy") || modelPath?.endsWith(".malloynb");
+   const packageUrl = `/${params.environmentName}/${params.packageName}`;
+   if (
+      modelPath === "dictionary" ||
+      (modelPath?.startsWith("dictionary/") && !isModelFile)
+   ) {
+      if (!features.dataDictionary) return <Navigate to={packageUrl} replace />;
+      return (
+         <DictionaryPage
+            environmentName={params.environmentName}
+            packageName={params.packageName}
+            entityId={modelPath.slice("dictionary/".length) || undefined}
+         />
+      );
+   }
+   if (modelPath === "coverage") {
+      if (!features.questionCoverage) {
+         return <Navigate to={packageUrl} replace />;
+      }
+      return (
+         <CoveragePage
+            environmentName={params.environmentName}
+            packageName={params.packageName}
+         />
+      );
+   }
 
    // Dashboard viewer. `dashboards/overview` is the dashboard; the file it is
    // declared in, `dashboards/overview.malloy`, keeps opening in the Model

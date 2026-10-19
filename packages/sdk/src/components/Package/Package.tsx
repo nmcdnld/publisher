@@ -72,11 +72,14 @@ const draftPrefix = (
 interface PackageProps {
    onClickPackageFile?: (to: string, event?: React.MouseEvent) => void;
    resourceUri: string;
+   /** Rendered under the package title, above its contents. */
+   insights?: React.ReactNode;
 }
 
 export default function Package({
    onClickPackageFile,
    resourceUri,
+   insights,
 }: PackageProps) {
    const { apiClients, server, mutable } = useServer();
    const queryClient = useQueryClient();
@@ -415,6 +418,8 @@ export default function Package({
                </Typography>
             )}
          </Box>
+
+         {insights}
 
          {isLoading && <Loading text="Loading package..." />}
 

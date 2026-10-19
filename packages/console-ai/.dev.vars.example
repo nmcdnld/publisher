@@ -1,0 +1,4 @@
+# Every model call goes through OpenRouter.
+OPENROUTER_API_KEY=
+# Optional: the OpenRouter slug for structured work and the chat default.
+# DEFAULT_MODEL=anthropic/claude-opus-5.5

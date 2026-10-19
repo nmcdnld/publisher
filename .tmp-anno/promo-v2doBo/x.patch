@@ -1,0 +1,86 @@
+--- a/storefront.malloy
++++ b/storefront.malloy
+@@ -18,1 +18,2 @@
++##! experimental.access_modifiers
+ ## theme.palette.series = ["#4f46e5", "#7c3aed", "#ec4899", "#10b981", "#f59e0b", "#06b6d4"]
+@@ -21,2 +22,14 @@
+-source: customers is duckdb.table('data/customers.parquet') extend {
++source: customers is duckdb.table('data/customers.parquet') include {
++  #(doc) Test description for customer_id.
++  `customer_id`
++  #(doc) Test description for full_name.
++  `full_name`
++  #(doc) Test description for state.
++  `state`
++  #(doc) Test description for city.
++  `city`
++  #(doc) Test description for signup_date.
++  `signup_date`
++  *
++} extend {
+   primary_key: customer_id
+@@ -28,2 +41,16 @@
+-source: products is duckdb.table('data/products.parquet') extend {
++source: products is duckdb.table('data/products.parquet') include {
++  #(doc) Test description for product_id.
++  `product_id`
++  #(doc) Test description for name.
++  `name`
++  #(doc) Test description for category.
++  `category`
++  #(doc) Test description for brand.
++  `brand`
++  #(doc) Test description for cost.
++  `cost`
++  #(doc) Test description for retail_price.
++  `retail_price`
++  *
++} extend {
+   primary_key: product_id
+@@ -37,2 +64,8 @@
+-source: regions is duckdb.table('data/regions.csv') extend {
++source: regions is duckdb.table('data/regions.csv') include {
++  #(doc) Test description for state.
++  `state`
++  #(doc) Test description for region.
++  `region`
++  *
++} extend {
+   primary_key: state
+@@ -42,2 +75,18 @@
+-source: order_items is duckdb.table('data/order_items.parquet') extend {
++source: order_items is duckdb.table('data/order_items.parquet') include {
++  #(doc) Test description for id.
++  `id`
++  #(doc) Test description for order_id.
++  `order_id`
++  #(doc) Test description for customer_id.
++  `customer_id`
++  #(doc) Test description for product_id.
++  `product_id`
++  #(doc) Test description for sale_price.
++  `sale_price`
++  #(doc) Test description for status.
++  `status`
++  #(doc) Test description for created_at.
++  `created_at`
++  *
++} extend {
+   primary_key: id
+--- a/dashboards/overview.malloy
++++ b/dashboards/overview.malloy
+@@ -117,1 +117,2 @@
++  #(doc) Test description for kpis.
+   # colspan=12
+@@ -136,1 +137,2 @@
++  #(doc) Test description for revenue_trend.
+   # colspan=6
+@@ -141,1 +143,2 @@
++  #(doc) Test description for revenue_by_state.
+   # colspan=6
+@@ -145,1 +148,2 @@
++  #(doc) Test description for revenue_by_category.
+   # colspan=6
+@@ -150,1 +154,2 @@
++  #(doc) Test description for best_sellers.
+   # colspan=6

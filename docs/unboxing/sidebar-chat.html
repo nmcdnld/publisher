@@ -1,0 +1,1027 @@
+<!doctype html>
+<!--
+Copyright (c) Credible Data Inc.
+SPDX-License-Identifier: MIT
+-->
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Part 4 — Sidebar and chat · Publisher unboxing</title>
+  <meta name="description"
+    content="A sidebar that gives chats a home, a chat that answers in the margin of the dashboard or notebook you're reading, and a full-page view that remembers where the chat started, compared with the Credible app as it ships today.">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Sidebar and chat: asking from where you are">
+  <meta property="og:description"
+    content="Publisher unboxing, Part 4: a rail with a Chats page, a margin chat on dashboards and notebooks, and a full-page chat with a link back to its content, side by side with the Credible app.">
+  <meta property="og:url" content="https://nmcdnld.github.io/publisher/docs/unboxing/sidebar-chat.html">
+  <style>
+    :root {
+      --ink: #16181d;
+      --ink-2: #4a505c;
+      --ink-3: #7b8190;
+      --rule: #e3e5ea;
+      --wash: #f6f7f9;
+      --accent: #1f6feb;
+      --accent-wash: #eaf2ff;
+      --warn: #9a6700;
+      --warn-wash: #fff8e1;
+      --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      --serif: "Iowan Old Style", "Charter", Georgia, serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font: 16px/1.6 var(--sans);
+      background: #fff;
+    }
+
+    .page {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 760px);
+      gap: 56px;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 56px 32px 120px;
+    }
+
+    nav.toc {
+      position: sticky;
+      top: 32px;
+      align-self: start;
+      font-size: 13px;
+    }
+
+    nav.toc .label {
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      margin-bottom: 12px;
+    }
+
+    nav.toc ol {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      counter-reset: toc;
+    }
+
+    nav.toc li {
+      counter-increment: toc;
+      margin: 0 0 8px;
+    }
+
+    nav.toc a {
+      color: var(--ink-2);
+      text-decoration: none;
+    }
+
+    nav.toc li a::before {
+      content: counter(toc, decimal-leading-zero);
+      font-family: var(--mono);
+      color: var(--ink-3);
+      margin-right: 8px;
+    }
+
+    nav.toc a:hover {
+      color: var(--accent);
+    }
+
+    nav.toc .series {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    nav.toc .series a {
+      display: block;
+      padding: 5px 0 5px 10px;
+      border-left: 2px solid var(--rule);
+      line-height: 1.35;
+    }
+
+    nav.toc .series a b {
+      display: block;
+      font: 600 10.5px/1.5 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+
+    nav.toc .series a[aria-current] {
+      border-left-color: var(--accent);
+      color: var(--ink);
+    }
+
+    nav.toc .series a[aria-current] b {
+      color: var(--accent);
+    }
+
+    main {
+      min-width: 0;
+    }
+
+    .series-foot {
+      margin-top: 88px;
+      padding-top: 28px;
+      border-top: 1px solid var(--rule);
+    }
+
+    .series-foot .label {
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+
+    .series-foot .card {
+      display: block;
+      margin-top: 14px;
+      padding: 18px 22px;
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      color: var(--ink);
+      text-decoration: none;
+      background: var(--wash);
+    }
+
+    .series-foot .card:hover {
+      border-color: var(--accent);
+    }
+
+    .series-foot .card .eyebrow {
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .series-foot .card .title {
+      display: block;
+      font: 600 22px/1.25 var(--serif);
+      margin: 8px 0 6px;
+    }
+
+    .series-foot .card .blurb {
+      display: block;
+      font-size: 15px;
+      color: var(--ink-2);
+    }
+
+    .series-foot .colophon {
+      font: 12px/1.5 var(--mono);
+      color: var(--ink-3);
+      margin-top: 18px;
+    }
+
+    header .kicker {
+      font: 600 12px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    h1 {
+      font: 600 44px/1.1 var(--serif);
+      letter-spacing: -.01em;
+      margin: 14px 0 16px;
+    }
+
+    .dek {
+      font-size: 19px;
+      color: var(--ink-2);
+      margin: 0 0 20px;
+    }
+
+    .byline {
+      font: 12px/1.5 var(--mono);
+      color: var(--ink-3);
+    }
+
+    h2 {
+      font: 600 28px/1.2 var(--serif);
+      margin: 72px 0 8px;
+      padding-top: 24px;
+      border-top: 1px solid var(--rule);
+    }
+
+    h2 .num {
+      font: 500 14px var(--mono);
+      color: var(--ink-3);
+      margin-right: 10px;
+      vertical-align: 4px;
+    }
+
+    h3 {
+      font-size: 17px;
+      margin: 36px 0 6px;
+    }
+
+    .lede {
+      color: var(--ink-2);
+      font-size: 17px;
+      margin-top: 0;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    code {
+      font: 13.5px var(--mono);
+      background: var(--wash);
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      padding: 0 4px;
+    }
+
+    kbd {
+      font: 12.5px var(--mono);
+      border: 1px solid var(--rule);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      padding: 0 4px;
+      background: #fff;
+    }
+
+    .tldr {
+      background: var(--accent-wash);
+      border: 1px solid #cfe0ff;
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin: 32px 0 0;
+    }
+
+    .tldr strong.label {
+      display: block;
+      font: 600 11px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .tldr ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .tldr li {
+      margin: 4px 0;
+    }
+
+    figure {
+      margin: 28px 0;
+    }
+
+    figure.wide {
+      margin-left: -60px;
+      margin-right: -60px;
+    }
+
+    figure img {
+      width: 100%;
+      display: block;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px rgba(16, 24, 40, .06);
+    }
+
+    figcaption {
+      font-size: 13.5px;
+      color: var(--ink-2);
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    figcaption b {
+      color: var(--ink);
+    }
+
+    figcaption .src {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--ink-3);
+    }
+
+    figcaption .who {
+      display: inline-block;
+      font: 600 10.5px var(--mono);
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-right: 6px;
+      vertical-align: 1px;
+    }
+
+    .who.prod {
+      background: #eef0f4;
+      color: var(--ink-2);
+    }
+
+    .who.proto {
+      background: var(--accent-wash);
+      color: var(--accent);
+    }
+
+    .pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin: 28px -60px;
+      align-items: start;
+    }
+
+    .pair figure {
+      margin: 0;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14px;
+      margin: 16px 0;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--rule);
+      vertical-align: top;
+    }
+
+    th {
+      font: 600 11px var(--mono);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+
+    .callout {
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      padding: 14px 18px;
+      background: var(--wash);
+      font-size: 15px;
+      margin: 20px 0;
+    }
+
+    .flow {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      margin: 24px 0;
+      font-size: 13px;
+      flex-wrap: wrap;
+      row-gap: 12px;
+    }
+
+    .flow .node {
+      flex: 1 1 0;
+      min-width: 120px;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: #fff;
+    }
+
+    .flow .node b {
+      display: block;
+      font-size: 13.5px;
+      margin-bottom: 2px;
+    }
+
+    .flow .node span {
+      color: var(--ink-2);
+    }
+
+    .flow .node.hl {
+      border-color: #9ec1ff;
+      background: var(--accent-wash);
+    }
+
+    .flow .arrow {
+      flex: 0 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ink-3);
+      font-family: var(--mono);
+    }
+
+    @media (max-width: 960px) {
+      .page {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+
+      nav.toc {
+        display: none;
+      }
+
+      figure.wide,
+      .pair {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      .pair {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <nav class="toc">
+      <div class="series">
+        <div class="label">Publisher unboxing</div>
+        <a href="https://nmcdnld.github.io/publisher/docs/unboxing/index.html"><b>Part 1</b>Unboxing Publisher</a>
+        <a href="https://nmcdnld.github.io/publisher/docs/unboxing/credible-demo.html"><b>Part 2</b>Credible demo
+          workspace</a>
+        <a href="data-dictionary.html"><b>Part 3</b>Data Dictionary</a>
+        <a href="sidebar-chat.html" aria-current="page"><b>Part 4</b>Sidebar and chat</a>
+      </div>
+      <div class="label">Contents</div>
+      <ol>
+        <li><a href="#why">Why start from the app</a></li>
+        <li><a href="#prod">The app today</a></li>
+        <li><a href="#rail">A rail with a home for chats</a></li>
+        <li><a href="#margin">A chat in the margin</a></li>
+        <li><a href="#full">Full page, and the way back</a></li>
+        <li><a href="#compare">Side by side</a></li>
+        <li><a href="#learned">What the prototype taught me</a></li>
+        <li><a href="#next">Where it could go</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <header>
+        <div class="kicker">Publisher unboxing · Part 4 · Sidebar and chat</div>
+        <h1>Sidebar and chat: asking from where you are</h1>
+        <p class="dek">Part 2 was a guess at the Credible app, made before I'd seen it. Since then I've had access, so
+          this part starts from the real thing. I built a close copy of it, <code>packages/credible-clone</code>, and
+          changed three things about how chat fits around content: where you find your chats, where a question asked
+          from a dashboard is answered, and how a chat that outgrows the margin finds its way back.</p>
+        <div class="byline">Noah Mac · product + design engineering update · Oct 12, 2026</div>
+
+        <div class="tldr">
+          <strong class="label">TL;DR</strong>
+          <ul>
+            <li><b>Chats get a home in the sidebar.</b> A slim rail adds <i>Chats</i> beside <i>My Workspace</i>,
+              <i>Reports</i> and <i>Packages</i>. It opens on hover and pins with <kbd>⌘B</kbd>. The Chats page puts
+              a standalone <i>New chat</i> next to every earlier chat, with search and filter chips for the package,
+              report, or kind of content a chat is about. In the app today, the only list of past chats is the home
+              page's <i>Conversations</i> section.</li>
+            <li><b>A question on a dashboard is answered beside the dashboard.</b> Asking from the composer floating
+              over a dashboard or notebook keeps you on the page. The answer streams into a column in the page's right
+              margin, sharing its scroll, with each question pinned above its reply. The app today turns the same
+              question into a full-page chat and moves the dashboard into a narrow panel beside it.</li>
+            <li><b>Every margin chat has a full page, and a way back.</b> One button opens the chat in the Chats page,
+              under a <i>Started from Storefront overview</i> banner. The banner returns to the dashboard with the
+              chat still open beside it. The same origin is a filter in chat history: <i>Report: Storefront
+                overview</i>.</li>
+            <li><b>The app's agent knows more than mine.</b> The app's chat runs a dashboard's tiles before it answers
+              and lists what it touched in a panel. The clone's agent only gets the report's title, and on a notebook
+              it said so: "I couldn't open the Category review notebook's cells with these tools." The layout ideas
+              here are worth more paired with the app's grounding than with mine.</li>
+            <li><b>It's a prototype.</b> Fixture chats and in-memory threads; nothing survives a reload. The answers
+              are live: Claude Opus 5.5 on OpenRouter, using Publisher's own MCP tools and skills against the bundled
+              <code>storefront</code> package.</li>
+          </ul>
+        </div>
+      </header>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="why"><span class="num">01</span>Why start from the app</h2>
+      <p class="lede">Part 2's last section said every next step depended on seeing the real Credible app. This is
+        that step.</p>
+
+      <p>Part 2's demo workspace invented a Library, a For You page and an insight Studio without knowing what the app
+        already did. That made it easy to build and hard to act on. So this time I started by cloning the app's shell
+        from screenshots, close enough that a change could be judged against the original rather than against a
+        different product. The clone is small, about 3,200 lines of TypeScript, and renders the same Publisher
+        content the app does: dashboards and notebooks through the SDK, and an agent grounded by Publisher's MCP
+        tools.</p>
+
+      <p>Three questions kept coming up while I used the app, and they shaped the clone:</p>
+      <table>
+        <tr>
+          <th>Question</th>
+          <th>Where it's answered</th>
+        </tr>
+        <tr>
+          <td>Where do I start a new chat, and where are my old ones?</td>
+          <td>Section 03, the rail and the Chats page</td>
+        </tr>
+        <tr>
+          <td>If I'm reading a dashboard, can I ask about it without leaving it?</td>
+          <td>Section 04, the margin chat</td>
+        </tr>
+        <tr>
+          <td>When a side conversation gets long, where does it go, and can I get back?</td>
+          <td>Section 05, full page with a backlink</td>
+        </tr>
+      </table>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="prod"><span class="num">02</span>The app today</h2>
+      <p class="lede">A workspace home, a full-page agent, and content that opens in a panel beside it.</p>
+
+      <figure class="wide">
+        <img src="img/sidebar-chat/prod-home.png" alt="The Credible app's workspace home, with the sidebar expanded">
+        <figcaption><span class="who prod">App</span><b>My Workspace.</b> The sidebar holds <i>My Workspace</i> and
+          <i>Environments</i>, and a <i>Suggested next steps</i> card whose contents depend on the page. Here it's
+          <i>Connect your own AI</i>, <i>Ask across your workspace</i> and <i>What is Credible?</i>. The page lists
+          Conversations (three, then <i>Show 7 more</i>), Reports and Packages, with a composer at the bottom. That
+          Conversations list is the only place to browse chats.
+          <span class="src">/workspaces/noahamac-at-icloud-com-personal</span></figcaption>
+      </figure>
+
+      <div class="pair">
+        <figure>
+          <img src="img/sidebar-chat/prod-agent.png" alt="A full-page agent session in the Credible app">
+          <figcaption><span class="who prod">App</span><b>A chat is a page of its own.</b> The breadcrumb names the
+            workspace, the package, and the chat. Work is summarized in collapsible steps ("Edited 16 files and ran 4
+            queries in 8s"), with a to-do list, <i>Copy</i>, <i>Retry</i> and follow-up chips. The composer says
+            <i>Editing</i>: "This chat can edit thelook_ecommerce. Its changes stay in your draft until you publish."
+            <span class="src">/agent?session=…</span></figcaption>
+        </figure>
+        <figure>
+          <img src="img/sidebar-chat/prod-agent-panel-switch.png" alt="The agent's side panel and its switcher">
+          <figcaption><span class="who prod">App</span><b>The panel is what the chat touched.</b> <i>Show panel</i>
+            splits the page. Its switcher lists the connection the chat browsed (<code>bq_demo</code>), every file it
+            wrote, each marked <i>Draft</i>, and <i>Scope history</i>. This is the app's strongest idea about
+            content and chat: the chat is the main view, and its artifacts are always one click away.</figcaption>
+        </figure>
+      </div>
+
+      <h3>Asking from a dashboard</h3>
+      <div class="pair">
+        <figure>
+          <img src="img/sidebar-chat/prod-report.png" alt="The Customers and acquisition dashboard in the Credible app">
+          <figcaption><span class="who prod">App</span><b>A dashboard, with its own composer.</b> "Ask about this
+            dashboard or notebook", scoped to <i>Customers and acquisition</i>. The suggestions card changes to
+            <i>On 'Customers and acquisition'</i>: <i>Explain this dashboard or notebook</i> and <i>Find interesting
+              insights</i>. <span class="src">/reports/Customers%20and%20acquisition</span></figcaption>
+        </figure>
+        <figure>
+          <img src="img/sidebar-chat/prod-report-chat.png" alt="A chat started from the dashboard, with the dashboard in the side panel">
+          <figcaption><span class="who prod">App</span><b>After asking, the chat takes the page.</b> A chat started
+            from that composer ("summarize this dashboard") opens as a full-page agent session. The dashboard moves
+            into the right-hand panel, where its four KPI tiles stack into one column. The agent began by "Running
+            the dashboard's six tiles", so it answered from what the page actually shows.</figcaption>
+        </figure>
+      </div>
+
+      <p>Two details from that pair shaped what I built. First, the breadcrumb on the chat reads <i>My Workspace ›
+          Customers and acquisition</i>, but that second crumb is the <i>chat's</i> title, which happens to match the
+        dashboard's. Nothing on the page says the chat started from the dashboard; you have to infer it from the panel
+        and the scope chip. Second, the dashboard's own <i>Show chat</i> button opens the chat that <i>created</i> the
+        dashboard ("Additional dashboards"), not the later one that asked about it. So the app links content to the
+        chat that made it, but not to the chats about it.</p>
+
+      <figure class="wide">
+        <img src="img/sidebar-chat/prod-show-chat.png" alt="Show chat on the dashboard opens the chat that created it">
+        <figcaption><span class="who prod">App</span><b>Show chat.</b> From the dashboard, this opens
+          <i>Additional dashboards</i>, the chat that wrote it, with the dashboard in the panel
+          (<code>&amp;openArtifact=Customers+and+acquisition</code>). Its scope is <i>All packages</i>, and the
+          "summarize this dashboard" chat isn't reachable from here.</figcaption>
+      </figure>
+
+      <div class="callout">I didn't send any new questions in the app for this write-up. The report-started session
+        above is one I'd already had, and its scope (the dashboard) and first message ("summarize this dashboard")
+        show where it began. The app screenshots are from a window about 1,070 px wide, narrower than the clone's
+        1,440 px, so they're not quite to scale.</div>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="rail"><span class="num">03</span>A rail with a home for chats</h2>
+      <p class="lede">The sidebar should answer "where do I start?" and "where was that chat?" from any page.</p>
+
+      <figure class="wide">
+        <img src="img/sidebar-chat/home.png" alt="The clone's workspace home with the collapsed rail">
+        <figcaption><span class="who proto">Clone</span><b>The same home, behind a slim rail.</b> The workspace page
+          follows the app's, section for section. The sidebar becomes a slim rail of icons: home, <b>Chats</b>,
+          Reports, and Packages. <span class="src">/workspaces/noahamac-at-icloud-com-personal</span></figcaption>
+      </figure>
+
+      <div class="pair">
+        <figure>
+          <img src="img/sidebar-chat/rail-hover.png" alt="The rail expanded on hover, over the page">
+          <figcaption><span class="who proto">Clone</span><b>Hover to read it.</b> After 150 ms, so passing the
+            mouse across doesn't flash it, the rail expands over the page with labels, the full logo, and the account
+            row. Keyboard focus opens it the same way. The page underneath doesn't move.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/sidebar-chat/rail-pinned.png" alt="The rail pinned open, pushing the page over">
+          <figcaption><span class="who proto">Clone</span><b>Pin to keep it.</b> The panel button, or <kbd>⌘B</kbd>,
+            pins it open, and the page moves over to make room. The choice is remembered across reloads. The gear
+            switches light and dark mode, and embedded Publisher content follows.</figcaption>
+        </figure>
+      </div>
+
+      <h3>The Chats page</h3>
+      <div class="pair">
+        <figure>
+          <img src="img/sidebar-chat/new-chat.png" alt="The New chat page, beside the list of chats">
+          <figcaption><span class="who proto">Clone</span><b>A standalone new chat.</b> <i>Chats</i> opens on
+            <i>New chat</i>: "What do you want to know? Ask across every package, or pick one to narrow the scope."
+            Starter questions sit under the composer, along with <i>Continue: Revenue performance</i>. The list
+            beside it doesn't gain a "New chat" row until the first message is sent.
+            <span class="src">/chats/new</span></figcaption>
+        </figure>
+        <figure>
+          <img src="img/sidebar-chat/thread.png" alt="An existing chat open from the list">
+          <figcaption><span class="who proto">Clone</span><b>Every chat, one click away.</b> Each row has a title, a
+            relative time and a preview of the last message, newest first. The thread's composer carries the chat's
+            scope (<code>analytics</code> › <code>thelook_ecommerce</code>), and its placeholder says so: "Ask about
+            thelook_ecommerce". <span class="src">/chats/:id</span></figcaption>
+        </figure>
+      </div>
+
+      <h3>Search, then filter</h3>
+      <p>An early version of the list put package and "1 dashboard" chips on every row. That was useful but noisy, so
+        the chips moved into the search box. Focusing it opens a menu of filter templates, and picking one narrows the
+        list with a chip that sits above it.</p>
+
+      <div class="pair">
+        <figure>
+          <img src="img/sidebar-chat/filter-menu.png" alt="The filter menu: Package and Created">
+          <figcaption><span class="who proto">Clone</span><b>Filter by.</b> The templates are <i>Package</i>,
+            <i>Report</i>, and <i>Created</i> (what a chat produced, such as a dashboard). A template only appears when
+            some chat has a value for it, which is why <i>Report</i> isn't here yet: no chat has started from one.
+            Typing searches titles and every template's values at once.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/sidebar-chat/filter-package.png" alt="Package values with counts">
+          <figcaption><span class="who proto">Clone</span><b>Then a value.</b> Each value shows how many chats it
+            matches (<code>thelook_ecommerce</code>, 4). Arrow keys move through the menu, <kbd>Enter</kbd> picks,
+            <kbd>←</kbd> goes back a step, and <kbd>Backspace</kbd> on an empty box removes the last chip.</figcaption>
+        </figure>
+      </div>
+
+      <figure class="wide">
+        <img src="img/sidebar-chat/filter-chip.png" alt="The list filtered to thelook_ecommerce, with a removable chip">
+        <figcaption><span class="who proto">Clone</span><b>Filtered.</b> <i>Package thelook_ecommerce</i> leaves the
+          four chats scoped to it. One chip per template, so picking another package replaces this one; with more
+          than one chip, a <i>Clear</i> link appears.</figcaption>
+      </figure>
+
+      <p>Compared with the app, the difference is less about the rail than about what's always in reach. The app's
+        sidebar is contextual: its suggestions card offers <i>Start a new chat</i> from inside a chat and <i>Ask
+          across your workspace</i> from home, which is a good prompt for someone new. But to reopen yesterday's chat,
+        you go home and expand <i>Conversations</i>. The Chats page makes history a destination you can reach from
+        anywhere, with the new-chat page as its first item.</p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="margin"><span class="num">04</span>A chat in the margin</h2>
+      <p class="lede">Asking about a dashboard shouldn't mean leaving it. The answer can live in the space the page
+        wasn't using.</p>
+
+      <figure class="wide">
+        <img src="img/sidebar-chat/dashboard.png" alt="The Storefront overview dashboard with a floating composer">
+        <figcaption><span class="who proto">Clone</span><b>A dashboard, as in the app.</b> <i>Storefront
+            overview</i> from the bundled <code>storefront</code> package, rendered live by the Publisher SDK, with
+          the composer floating at the bottom. Its scope is the dashboard itself, a chip reading <i>Storefront
+            overview</i>. <span class="src">/reports/storefront/dashboard/overview</span></figcaption>
+      </figure>
+
+      <div class="flow">
+        <div class="node"><b>Ask</b><span>From the floating composer on a dashboard or notebook</span></div>
+        <div class="arrow">→</div>
+        <div class="node hl"><b>Answer in the margin</b><span>The page widens and a chat column docks on its
+            right</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Follow up</b><span>A composer returns under the thread once the reply lands</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>Open full page</b><span>When it outgrows the margin (section 05)</span></div>
+      </div>
+
+      <div class="pair">
+        <figure>
+          <img src="img/sidebar-chat/side-streaming.png" alt="The question in the margin, with a stop button, while the agent works">
+          <figcaption><span class="who proto">Clone</span><b>The question becomes the header.</b> Sending moves the
+            question to the top of a column on the right. The floating composer goes away, and while the reply is in
+            progress the question carries the stop button, where the send button was. The dashboard reflows to make
+            room rather than being covered.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/sidebar-chat/side-answer.png" alt="The finished answer in the margin, with a composer below">
+          <figcaption><span class="who proto">Clone</span><b>The answer, grounded.</b> "Shorts has the highest gross
+            margin rate at 49.8%, which is 2.5 percentage points above the overall store average of 47.3%." Above it,
+            the agent's work folds into one line ("Looked up the model's fields, Ran a query · 5 calls"). When it
+            finishes, a composer appears at the bottom of the column, still scoped to the dashboard.</figcaption>
+        </figure>
+      </div>
+
+      <p>The column is part of the page, not a drawer over it. It has no border or background of its own, and it
+        sticks to the top of the scroll area exactly as tall as what's visible, so it stays put while the dashboard
+        scrolls beside it. The page's maximum width grows from 1,400 to 1,816 px to make room, which on a wide screen
+        means the chat uses margin the dashboard was leaving empty anyway. The chat's id goes into the URL as
+        <code>?chat=</code>, which is how the full page links back (section 05).</p>
+
+      <h3>Keeping the question in view</h3>
+      <p>A margin is narrow, so a single answer can be several screens long, and a long answer read without its
+        question loses its context. Each question pins to the top of the column while its reply scrolls under it,
+        until the next question pushes it out.</p>
+
+      <div class="pair">
+        <figure>
+          <img src="img/sidebar-chat/side-followup.png" alt="A follow-up question pinned above its answer">
+          <figcaption><span class="who proto">Clone</span><b>A follow-up starts at the top.</b> "And which region
+            brings in the most revenue?" Rather than following the reply to its last line, the column scrolls the new
+            question to the top and lets the answer stream in beneath it from the first line: "The South brings in
+            the most revenue: $781,182, or 37.2% of the total."</figcaption>
+        </figure>
+        <figure>
+          <img src="img/sidebar-chat/side-stuck.png" alt="Scrolling up: the first question stuck with a shadow over hidden text">
+          <figcaption><span class="who proto">Clone</span><b>Stuck, with a shadow.</b> Scrolling back up, the first
+            question sticks while the end of its answer passes under it. The shadow appears only once text is
+            hidden beneath. The bubble is slightly wider than the text column, so nothing shows past its rounded
+            corners.</figcaption>
+        </figure>
+      </div>
+
+      <h3>On a notebook</h3>
+      <figure class="wide">
+        <img src="img/sidebar-chat/notebook-answer.png" alt="The margin chat on the Category review notebook">
+        <figcaption><span class="who proto">Clone</span><b>The same column on a notebook, and its limit.</b> On
+          <i>Category review</i>, asked to "summarize what this notebook says about returns", the agent answered
+          honestly: "I couldn't open the 'Category review' notebook's cells with these tools." It then ran the model's
+          own <code>return_rate</code> by category instead (4.6% to 5.4%), and said that was its query, not the
+          notebook's. <span class="src">/reports/storefront/notebook/notebooks/category-review.malloy</span>
+        </figcaption>
+      </figure>
+
+      <p>That answer is the most useful screenshot in this part. The clone tells the agent only "the user is looking
+        at the notebook <i>Category review</i>", and none of Publisher's MCP tools reads a dashboard's tiles or a
+        notebook's prose. The app's chat ran the dashboard's tiles before it answered. Section 07 comes
+        back to this, because a margin chat is a promise that the chat knows what's next to it.</p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="full"><span class="num">05</span>Full page, and the way back</h2>
+      <p class="lede">A margin chat should be able to grow into a full chat without losing track of where it
+        started.</p>
+
+      <figure class="wide">
+        <img src="img/sidebar-chat/full-chat.png" alt="The margin chat opened as a full chat, under a Started from banner">
+        <figcaption><span class="who proto">Clone</span><b>Open in full chat.</b> The expand button at the top of the
+          column opens the same chat in the Chats page, now first in the list. A banner sits under the header:
+          <i>← Started from Storefront overview</i>. The composer keeps the dashboard as its scope, so a follow-up
+          here is still about the dashboard. <span class="src">/chats/:id</span></figcaption>
+      </figure>
+
+      <div class="pair">
+        <figure>
+          <img src="img/sidebar-chat/back-to-dashboard.png" alt="Back on the dashboard with the chat reopened in the margin">
+          <figcaption><span class="who proto">Clone</span><b>And back.</b> The banner links to the page the chat came
+            from with <code>?chat=</code> set, so the dashboard opens with the same chat beside it, on its latest
+            question. A reply that's still streaming keeps streaming across both moves, because each chat's client
+            lives above the routes rather than in either view.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/sidebar-chat/filter-report.png" alt="Chat history filtered to chats started from Storefront overview">
+          <figcaption><span class="who proto">Clone</span><b>Origin is a filter too.</b> Now that a chat started from
+            a dashboard, the filter menu offers <i>Report</i>, and <i>Report Storefront overview</i> lists the chats
+            about it. This is the "chats about this content" list the app's <i>Show chat</i> doesn't offer.
+          </figcaption>
+        </figure>
+      </div>
+
+      <p>The banner is the prototype's answer to the app's breadcrumb. Both sit at the top of the chat, but the
+        breadcrumb says where the chat is <i>filed</i> (the workspace) and the banner says where it <i>came from</i>
+        (a page you can return to). A chat that started from nothing in particular, like one from the home composer
+        or <i>New chat</i>, gets no banner.</p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="compare"><span class="num">06</span>Side by side</h2>
+      <p class="lede">The two put chat and content in opposite places. The app makes the chat the page and the
+        content a panel. The clone makes the content the page and the chat a margin.</p>
+
+      <table>
+        <tr>
+          <th>Moment</th>
+          <th>The app today</th>
+          <th>The clone</th>
+        </tr>
+        <tr>
+          <td>Start a new chat</td>
+          <td>The composer on home, or <i>Start a new chat</i> in a chat's suggestions card</td>
+          <td><i>Chats</i> in the rail opens <i>New chat</i>; the home composer works too</td>
+        </tr>
+        <tr>
+          <td>Find an earlier chat</td>
+          <td>Home, <i>Conversations</i>, <i>Show 7 more</i></td>
+          <td>The Chats list on every chat page, with search and filters by package, report, or what it created</td>
+        </tr>
+        <tr>
+          <td>Ask from a dashboard</td>
+          <td>Opens a full-page chat; the dashboard moves to a side panel</td>
+          <td>Stays on the dashboard; the answer docks in the right margin</td>
+        </tr>
+        <tr>
+          <td>Know where a chat came from</td>
+          <td>Implied by the panel and the scope chip</td>
+          <td>A <i>Started from …</i> banner that links back, with the chat reopened beside the content</td>
+        </tr>
+        <tr>
+          <td>Chats about this content</td>
+          <td><i>Show chat</i> opens the chat that created it</td>
+          <td>Filter history by <i>Report</i></td>
+        </tr>
+        <tr>
+          <td>What the agent sees</td>
+          <td>The artifact itself: it ran the dashboard's tiles</td>
+          <td>The report's title and package only</td>
+        </tr>
+        <tr>
+          <td>What the agent touched</td>
+          <td>A panel switcher of connections and draft files, plus scope history</td>
+          <td>A folded list of tool calls in the reply</td>
+        </tr>
+        <tr>
+          <td>Persistence</td>
+          <td>Server-side sessions</td>
+          <td>In memory; gone on reload</td>
+        </tr>
+      </table>
+
+      <p>Neither placement is right for every question. "Summarize this dashboard" or "build me another one" is work
+        whose output is the chat, and the app's chat-first layout suits it. "Why is this number up?" while reading a
+        dashboard is a side question, and the margin keeps the thing being asked about in full view. The clone's real
+        claim is that the second kind should not have to become the first, and that when it does, the way back should
+        be explicit.</p>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="learned"><span class="num">07</span>What the prototype taught me</h2>
+      <p class="lede">The layout held up. Most of the friction is in what the chat knows, and in a narrow
+        column.</p>
+
+      <table>
+        <tr>
+          <th>Friction</th>
+          <th>What happened</th>
+          <th>Directional fix</th>
+        </tr>
+        <tr>
+          <td>The agent can't see the page</td>
+          <td>The chat is told only the report's kind and title. On the notebook it said it couldn't open the cells,
+            and answered from the model instead.</td>
+          <td>Send the page with the question: the dashboard manifest from <code>GET …/dashboards/{name}</code>, its
+            tile queries, the current givens, and for a notebook its prose. Part 3's <i>Ask about this</i> already sent
+            the page as markdown.</td>
+        </tr>
+        <tr>
+          <td>Tables don't fit the margin</td>
+          <td>Both answers' tables were clipped on the right (<i>Margin</i>, <i>Order lines</i>).</td>
+          <td>Scroll tables inside their own box, tell the agent the column is narrow (the prompt already says "a few
+            columns"), or offer <i>Open full page</i> on any wide table</td>
+        </tr>
+        <tr>
+          <td>Previews show raw markdown</td>
+          <td>The new chat's row in history reads <code>**The South brings in…</code>.</td>
+          <td>Strip formatting from previews, and preview the answer's first sentence rather than its last message</td>
+        </tr>
+        <tr>
+          <td>Titles are cut, not written</td>
+          <td>A chat is titled with the first 60 characters of its question, so the header reads "…gross margin, and
+            how".</td>
+          <td>Title chats the way Part 3's Ask window did, with a short model-written title after the first reply</td>
+        </tr>
+        <tr>
+          <td>One chat per page at a time</td>
+          <td>While a margin chat is open, the floating composer is hidden, so a second, unrelated question means
+            closing the first.</td>
+          <td>A <i>New chat</i> button in the column header, with earlier chats about this page one click away</td>
+        </tr>
+        <tr>
+          <td>A link that outlives its chat</td>
+          <td><code>?chat=</code> makes a margin chat linkable, but threads live in memory, so after a reload the link
+            opens "This chat doesn't exist".</td>
+          <td>The app's server-side sessions. Nothing about the margin layout needs a different store.</td>
+        </tr>
+        <tr>
+          <td>Half the rail is placeholders</td>
+          <td><i>Reports</i> and <i>Packages</i> open stub pages; reports are reached from home.</td>
+          <td>Give them the same list-and-filter treatment as Chats, or drop them until they have one</td>
+        </tr>
+      </table>
+
+      <h3>Concepts worth keeping</h3>
+      <ul>
+        <li><b>History is a place, not a section.</b> A Chats page reachable from every screen, with <i>New chat</i>
+          as its first item, answers both "where do I start?" and "where was that?".</li>
+        <li><b>Ask where you are, answer where you are.</b> A side question gets a side answer, in space the page
+          wasn't using, with the content still interactive beside it.</li>
+        <li><b>Every chat remembers its origin.</b> Origin is a link back, a scope for follow-ups, and a filter in
+          history. Those three uses of one fact are what make it worth recording.</li>
+        <li><b>The question stays on screen.</b> In a narrow column, pinning each question above its answer, and
+          starting each reply at its first line, does more for readability than any amount of formatting.</li>
+      </ul>
+
+      <!-- ─────────────────────────────────────────────── -->
+      <h2 id="next"><span class="num">08</span>Where it could go</h2>
+      <p class="lede">The best version is probably both: the app's grounding and artifact panel, with the clone's
+        margin and way back.</p>
+
+      <ul>
+        <li><b>Margin first, panel when it grows.</b> Start a question from a dashboard in its margin. If the chat
+          starts producing things (a new view, a draft file, a second dashboard), offer to switch to the app's
+          chat-first layout, with the dashboard as the panel's first artifact and a <i>Started from</i> banner above
+          the chat.</li>
+        <li><b>Make the page part of the prompt.</b> A margin chat should know which tiles are on screen, what filters
+          are set, and which one the user last clicked. A <i>drill</i> on a tile could even become the question:
+          "why is this bar taller?"</li>
+        <li><b>Chats about this, on the page.</b> The app's <i>Show chat</i> knows which chat made a dashboard. Add
+          the chats that asked about it, so a dashboard becomes a place where questions about it accumulate, for its
+          author and for the next reader.</li>
+        <li><b>Suggestions from the content.</b> The app's contextual suggestions card (<i>Explain this
+            dashboard</i>, <i>Find interesting insights</i>) belongs in the margin too, as the column's empty state
+          before the first question.</li>
+        <li><b>Save from the margin.</b> Part 2's promote flow fits here naturally: a margin answer that matters
+          becomes a saved insight, or a tile on the dashboard it was asked from.</li>
+      </ul>
+
+      <h3>What's in the tree</h3>
+      <p>Like Parts 1 to 3, none of this is committed to the repo.</p>
+      <table>
+        <tr>
+          <th>Piece</th>
+          <th>State</th>
+        </tr>
+        <tr>
+          <td>App shell and home (<code>packages/credible-clone</code>)</td>
+          <td>A close copy of the Credible app's workspace page on fixture data; about 3,200 lines of TypeScript in
+            all. Dashboards and notebooks come live from the local Publisher.</td>
+        </tr>
+        <tr>
+          <td>Rail (<code>src/components/Rail.tsx</code>)</td>
+          <td>Hover to expand, pin with <kbd>⌘B</kbd>, light and dark mode. Reports and Packages are
+            placeholders.</td>
+        </tr>
+        <tr>
+          <td>Chats page (<code>src/pages/chats/</code>)</td>
+          <td>New chat, thread view, search, and filter chips by package, report, and what a chat created. Fixture
+            history; new chats in memory.</td>
+        </tr>
+        <tr>
+          <td>Margin chat (<code>src/components/ChatPanel.tsx</code>, <code>src/pages/ServedPages.tsx</code>)</td>
+          <td>Working on dashboards, notebooks and package pages, with pinned questions, stop, follow-ups, open full
+            page, and the <code>?chat=</code> link back.</td>
+        </tr>
+        <tr>
+          <td>Agent (<code>server/agent.ts</code>)</td>
+          <td>TanStack AI in a Vite dev-server plugin at <code>/ai/chat</code>, Opus 5.5 on OpenRouter, with every
+            Publisher MCP tool and the skills behind <code>load_skill</code>, <code>malloy-analysis</code> preloaded.
+          </td>
+        </tr>
+      </table>
+
+      <p>To reproduce the screenshots, run Publisher (<code>bun run start</code> from the repo root) and the clone
+        (<code>bun run dev</code> from <code>packages/credible-clone</code>, with an <code>OPENROUTER_API_KEY</code>
+        in <code>.env.local</code>), then <code>node docs/unboxing/capture-sidebar-chat.mjs</code>. It makes three
+        live agent calls, so the answers will differ a little from run to run. The app screenshots were taken by hand
+        in my personal workspace.</p>
+
+      <div class="series-foot">
+        <div class="label">Previously</div>
+        <a class="card" href="data-dictionary.html">
+          <span class="eyebrow">← Part 3</span>
+          <span class="title">Data Dictionary: making a model discoverable</span>
+          <span class="blurb">A data dictionary that writes itself from any package, AI-drafted <code>#(doc)</code>
+            descriptions with a person in the loop, and a question coverage score.</span>
+        </a>
+        <a class="card" href="https://nmcdnld.github.io/publisher/docs/unboxing/credible-demo.html">
+          <span class="eyebrow">← Part 2</span>
+          <span class="title">Credible demo workspace: a front door for Publisher</span>
+          <span class="blurb">A Library filled from the workspace's packages, AI-drafted insights with a person in the
+            loop, and saving anything worth keeping back into the package it came from.</span>
+        </a>
+        <a class="card" href="https://nmcdnld.github.io/publisher/docs/unboxing/index.html">
+          <span class="eyebrow">← Part 1</span>
+          <span class="title">Unboxing Publisher and adding Question mode</span>
+          <span class="blurb">Two example packages rebuilt on Publisher, what building them taught me, and a
+            question-first way to build a query in the Explorer.</span>
+        </a>
+        <div class="colophon">Publisher unboxing · Part 4 · Noah Mac · Oct 12, 2026</div>
+      </div>
+    </main>
+  </div>
+</body>
+
+</html>

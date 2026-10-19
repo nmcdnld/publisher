@@ -105,8 +105,16 @@ const ASSET_EXTENSIONS = new Set([
  * so an old bookmark could reach the app and be redirected. That alias is gone:
  * a `pages/...` path is an ordinary path into the package's `public/` directory
  * again.
+ *
+ * `dictionary` is here because a dictionary page's id ends in a field name, and a field
+ * named `json` or `csv` makes `dictionary/<model>:<source>.json` look like a file.
  */
-const SPA_OWNED_SEGMENTS = new Set(["dashboards", "data-apps", "notebooks"]);
+const SPA_OWNED_SEGMENTS = new Set([
+   "dashboards",
+   "data-apps",
+   "dictionary",
+   "notebooks",
+]);
 
 export type SpaFallbackAction =
    /** Serve the app shell, as before. */

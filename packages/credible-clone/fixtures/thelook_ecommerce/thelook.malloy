@@ -1,0 +1,141 @@
+#(doc) One row per distribution center (warehouse) that stocks products.
+source: distribution_centers is
+  duckdb.table('data/distribution_centers.parquet') extend {
+  primary_key: id
+  rename: distribution_center_name is name
+  except: distribution_center_geom
+}
+#(doc) One row per registered customer. 100,000 customers in 15 countries.
+source: users is duckdb.table('data/users.parquet') extend {
+  primary_key: id
+  except: user_geom, first_name, last_name, email, street_address
+  dimension:
+    #(doc) When the customer registered.
+    signed_up_at is created_at
+    #(doc) Customer age band: Under 25, 25-34, 35-49, 50-64 or 65+.
+    age_group is pick 'Under 25' when age < 25
+      pick '25-34' when age < 35
+      pick '35-49' when age < 50
+      pick '50-64' when age < 65
+      else '65+'
+    #(doc) Marketing channel the customer first arrived from.
+    acquisition_source is traffic_source
+  measure:
+    #(doc) Number of distinct customers.
+    customer_count is count()
+}
+#(doc) One row per product in the catalog. Department is Women or Men.
+source: products is duckdb.table('data/products.parquet') extend {
+  primary_key: id
+  rename: product_name is name
+  join_one: distribution_centers with distribution_center_id
+  measure:
+    #(doc) Number of distinct products.
+    product_count is count()
+}
+#(doc) One row per stocked unit; carries the unit cost of each sale.
+source: inventory_items is
+  duckdb.table('data/inventory_items.parquet') extend {
+  primary_key: id
+}
+#(doc) One row per order. num_of_item is the number of line items in it.
+source: orders is duckdb.table('data/orders.parquet') extend {
+  primary_key: order_id
+}
+#|(doc)
+  Sales fact table: one row per product sold in an order, Jan 2019 to
+  mid-March 2026 (2026 is a partial year). Revenue counts every line item
+  whatever its status, including cancelled and returned items; use
+  cancelled_revenue, returned_revenue and kept_revenue to separate them.
+  Sale price always equals list price, so there are no discounts.
+|#
+source: order_items is
+  duckdb.table('data/order_items.parquet') extend {
+  primary_key: id
+  join_one: orders with order_id
+  join_one: users with user_id
+  join_one: products with product_id
+  join_one: inventory_items with inventory_item_id
+  dimension:
+    #(doc) When the line item was ordered.
+    ordered_at is created_at
+    #|(doc)
+      Line item status: Processing, Shipped, Complete, Cancelled or
+      Returned.
+    |#
+    item_status is status
+    #(doc) True when the line item was cancelled.
+    is_cancelled is status = 'Cancelled'
+    #(doc) True when the line item was returned.
+    is_returned is status = 'Returned'
+    #(doc) Unit cost of the item sold, from inventory.
+    item_cost is inventory_items.cost
+    #(doc) Days from order to delivery; null until delivered.
+    days_to_deliver is days(created_at to delivered_at)
+  measure:
+    #|(doc)
+      Total sale price of every line item, all statuses included
+      (cancelled and returned too).
+    |#
+    # currency
+    revenue is sum(sale_price)
+    #(doc) Sale price of cancelled line items.
+    # currency
+    cancelled_revenue is sum(sale_price) { where: status = 'Cancelled' }
+    #(doc) Sale price of returned line items.
+    # currency
+    returned_revenue is sum(sale_price) { where: status = 'Returned' }
+    #(doc) Sale price excluding cancelled and returned line items.
+    # currency
+    kept_revenue is sum(sale_price) {
+      where: status != 'Cancelled' and status != 'Returned'
+    }
+    #(doc) Number of line items (units sold), all statuses.
+    item_count is count()
+    #(doc) Number of distinct orders.
+    order_count is count(order_id)
+    #(doc) Number of distinct customers who ordered.
+    buyer_count is count(user_id)
+    #(doc) Revenue per order, all statuses included.
+    # currency
+    avg_order_value is revenue / order_count
+    #(doc) Total inventory cost of the line items, all statuses.
+    # currency
+    total_cost is sum(inventory_items.cost)
+    #(doc) Revenue minus inventory cost, all statuses included.
+    # currency
+    gross_margin is revenue - total_cost
+    #(doc) Gross margin as a share of revenue.
+    # percent
+    gross_margin_pct is gross_margin / nullif(revenue, 0)
+    #(doc) Share of line items that were returned.
+    # percent
+    return_rate is count() { where: status = 'Returned' } / count()
+    #(doc) Share of line items that were cancelled.
+    # percent
+    cancellation_rate is count() { where: status = 'Cancelled' } / count()
+  # line_chart
+  view: revenue_by_month is {
+    group_by: order_month is ordered_at.month
+    aggregate: revenue, order_count
+  }
+  # bar_chart
+  view: revenue_by_category is {
+    group_by: products.category
+    aggregate: revenue, gross_margin_pct, return_rate
+  }
+  # bar_chart
+  view: revenue_by_country is {
+    group_by: users.country
+    aggregate: revenue, buyer_count
+  }
+  view: revenue_by_status is {
+    group_by: item_status
+    aggregate: item_count, revenue
+  }
+  view: top_brands is {
+    group_by: products.brand
+    aggregate: revenue, item_count, gross_margin_pct
+    limit: 10
+  }
+}

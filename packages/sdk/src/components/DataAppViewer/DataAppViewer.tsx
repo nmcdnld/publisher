@@ -3,14 +3,17 @@
 
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryWithApiError } from "../../hooks/useQueryWithApiError";
+import { usePublisherTheme } from "../../theme";
 import { useServer } from "../ServerProvider";
 import { MONO_FONT_FAMILY } from "../styles";
 import { parseResourceUri } from "../../utils/formatting";
 import {
    isPublisherResizeMessage,
    packageFileUrl,
+   PUBLISHER_THEME_MESSAGE_TYPE,
+   type PublisherThemeMessage,
 } from "../../utils/dataAppEmbed";
 
 interface DataAppViewerProps {
@@ -115,6 +118,16 @@ export default function DataAppViewer({ resourceUri }: DataAppViewerProps) {
       return () => window.removeEventListener("message", onMessage);
    }, [fillViewport]);
 
+   const { mode } = usePublisherTheme();
+   const postTheme = useCallback(() => {
+      const message: PublisherThemeMessage = {
+         type: PUBLISHER_THEME_MESSAGE_TYPE,
+         mode,
+      };
+      iframeRef.current?.contentWindow?.postMessage(message, "*");
+   }, [mode]);
+   useEffect(postTheme, [postTheme]);
+
    if (!parsed) {
       return (
          <Box sx={{ p: 3, maxWidth: 1200, mx: "auto" }}>
@@ -199,6 +212,7 @@ export default function DataAppViewer({ resourceUri }: DataAppViewerProps) {
                ref={iframeRef}
                src={standaloneUrl}
                title={title}
+               onLoad={postTheme}
                // allow-same-origin so the iframe can use cookies for the
                // Publisher API. allow-scripts so the dashboard's JS runs.
                // allow-forms so dropdown/filter forms work. Intentionally

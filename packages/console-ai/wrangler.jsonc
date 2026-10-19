@@ -1,0 +1,14 @@
+{
+   "$schema": "node_modules/wrangler/config-schema.json",
+   "name": "malloy-console-ai",
+   "main": "src/index.ts",
+   "compatibility_date": "2026-09-01",
+   "compatibility_flags": ["nodejs_compat"],
+   "vars": {
+      // Publisher's MCP endpoint, for grounding coverage questions and "Ask
+      // about this" in the same retrieval an agent gets. Only reachable from
+      // `wrangler dev` on the machine running Publisher; leave empty when
+      // deployed unless Publisher's MCP port sits behind a reachable gateway.
+      "PUBLISHER_MCP_URL": "http://127.0.0.1:4040/mcp"
+   }
+}

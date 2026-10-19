@@ -359,12 +359,60 @@
       }
    }
 
+   // --- Light/dark mode ---------------------------------------------------
+   // `Publisher.theme.mode` is "light" or "dark", and a "publisher:theme"
+   // event fires on window whenever it changes. A host frame decides it by
+   // posting { type: "publisher:theme", mode } (see dataAppEmbed.ts); until
+   // one does, it follows the Console's saved choice, then the OS.
+   var theme = { mode: "light", source: "system", tokens: {} };
+   var darkQuery =
+      typeof window.matchMedia === "function"
+         ? window.matchMedia("(prefers-color-scheme: dark)")
+         : null;
+
+   function setTheme(next) {
+      if (next.mode === theme.mode && next.source === theme.source) return;
+      theme = next;
+      if (window.Publisher) window.Publisher.theme = theme;
+      window.dispatchEvent(new Event("publisher:theme"));
+   }
+
+   function systemMode() {
+      var stored = null;
+      try {
+         stored = localStorage.getItem("publisher:themeMode");
+      } catch (_e) {
+         /* storage can be blocked in sandboxed frames */
+      }
+      if (stored === "light" || stored === "dark") return stored;
+      return darkQuery && darkQuery.matches ? "dark" : "light";
+   }
+
+   function followSystem() {
+      if (theme.source === "host") return;
+      setTheme({ mode: systemMode(), source: "system", tokens: {} });
+   }
+
+   theme.mode = systemMode();
+   if (darkQuery && darkQuery.addEventListener) {
+      darkQuery.addEventListener("change", followSystem);
+   }
+   window.addEventListener("storage", followSystem);
+   window.addEventListener("message", function (e) {
+      var data = e.data;
+      if (e.source !== window.parent || !data) return;
+      if (data.type !== "publisher:theme") return;
+      if (data.mode !== "light" && data.mode !== "dark") return;
+      setTheme({ mode: data.mode, source: "host", tokens: {} });
+   });
+
    // --- Public API --------------------------------------------------------
    window.Publisher = {
       query: query,
       queryFull: queryFull,
       embed: embed,
       context: ctx,
+      theme: theme,
       setToken: function (token) {
          bearerToken = token || null;
       },

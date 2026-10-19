@@ -11,6 +11,7 @@ import CodeOutlinedIcon from "@mui/icons-material/CodeOutlined";
 import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 import {
    Box,
@@ -19,12 +20,21 @@ import {
    ListItemButton,
    ListItemIcon,
    ListItemText,
+   ListSubheader,
+   Menu,
+   MenuItem,
+   Switch,
    Tooltip,
    Typography,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { ReactElement, ReactNode } from "react";
+import { ReactElement, ReactNode, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
+import {
+   PROTOTYPE_FEATURES,
+   setPrototypeFeature,
+   usePrototypeFeatures,
+} from "../../../prototypeFeatures";
 
 const SIDEBAR_WIDTH_EXPANDED = 260;
 const SIDEBAR_WIDTH_COLLAPSED = 64;
@@ -66,6 +76,7 @@ export default function Sidebar({
             <EnvironmentsSection isCollapsed={isCollapsed} />
          </Box>
          <DocsFooter isCollapsed={isCollapsed} />
+         <SettingsMenu isCollapsed={isCollapsed} />
       </Box>
    );
 }
@@ -272,6 +283,101 @@ function DocsFooter({ isCollapsed }: { isCollapsed: boolean }) {
                isCollapsed={isCollapsed}
             />
          ))}
+      </List>
+   );
+}
+
+function SettingsMenu({ isCollapsed }: { isCollapsed: boolean }) {
+   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+   const features = usePrototypeFeatures();
+   const label = "Settings";
+
+   const button = (
+      <ListItemButton
+         onClick={(event) => setAnchor(event.currentTarget)}
+         selected={Boolean(anchor)}
+         aria-haspopup="menu"
+         aria-expanded={Boolean(anchor)}
+         sx={{
+            justifyContent: isCollapsed ? "center" : "flex-start",
+            px: isCollapsed ? 0 : 2,
+         }}
+      >
+         <ListItemIcon
+            sx={{
+               minWidth: isCollapsed ? 0 : 36,
+               justifyContent: "center",
+               color: "text.secondary",
+            }}
+         >
+            <SettingsOutlinedIcon fontSize="small" />
+         </ListItemIcon>
+         {!isCollapsed && (
+            <ListItemText
+               primary={label}
+               primaryTypographyProps={{
+                  variant: "body2",
+                  sx: { color: "text.secondary" },
+               }}
+            />
+         )}
+      </ListItemButton>
+   );
+
+   return (
+      <List sx={{ pt: 0, pb: 1 }}>
+         {isCollapsed ? (
+            <Tooltip title={label} placement="right">
+               <Box>{button}</Box>
+            </Tooltip>
+         ) : (
+            button
+         )}
+         <Menu
+            anchorEl={anchor}
+            open={Boolean(anchor)}
+            onClose={() => setAnchor(null)}
+            anchorOrigin={{ vertical: "top", horizontal: "right" }}
+            transformOrigin={{ vertical: "bottom", horizontal: "left" }}
+            slotProps={{ paper: { sx: { minWidth: 280 } } }}
+         >
+            <ListSubheader
+               sx={{
+                  lineHeight: "32px",
+                  fontSize: "0.6875rem",
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+               }}
+            >
+               Prototype features
+            </ListSubheader>
+            {PROTOTYPE_FEATURES.map((feature) => (
+               <MenuItem
+                  key={feature.id}
+                  onClick={() =>
+                     setPrototypeFeature(feature.id, !features[feature.id])
+                  }
+                  role="menuitemcheckbox"
+                  aria-checked={features[feature.id]}
+                  sx={{ gap: 2 }}
+               >
+                  <ListItemText
+                     primary={feature.label}
+                     secondary={feature.description}
+                     primaryTypographyProps={{ variant: "body2" }}
+                     secondaryTypographyProps={{ variant: "caption" }}
+                  />
+                  <Switch
+                     size="small"
+                     edge="end"
+                     checked={features[feature.id]}
+                     tabIndex={-1}
+                     inputProps={{ "aria-hidden": true }}
+                  />
+               </MenuItem>
+            ))}
+         </Menu>
       </List>
    );
 }

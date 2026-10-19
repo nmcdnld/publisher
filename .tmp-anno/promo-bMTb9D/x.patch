@@ -1,0 +1,505 @@
+--- a/fantasy.malloy
++++ b/fantasy.malloy
+@@ -28,1 +28,2 @@
++##! experimental.access_modifiers
+ import "football.malloy"
+@@ -31,2 +32,41 @@
+-source: fantasy_events is duckdb.table('data/fantasy_events.parquet') extend {
++source: fantasy_events is duckdb.table('data/fantasy_events.parquet') include {
++  #(doc) Test description for game_id.
++  `game_id`
++  #(doc) Test description for play_seq.
++  `play_seq`
++  #(doc) Test description for season.
++  `season`
++  #(doc) Test description for game_week.
++  `game_week`
++  #(doc) Test description for game_quarter.
++  `game_quarter`
++  #(doc) Test description for clock.
++  `clock`
++  #(doc) Test description for seconds_left.
++  `seconds_left`
++  #(doc) Test description for team.
++  `team`
++  #(doc) Test description for player_id.
++  `player_id`
++  #(doc) Test description for full_name.
++  `full_name`
++  #(doc) Test description for position.
++  `position`
++  #(doc) Test description for role.
++  `role`
++  #(doc) Test description for play_type.
++  `play_type`
++  #(doc) Test description for yards.
++  `yards`
++  #(doc) Test description for has_touchdown.
++  `has_touchdown`
++  #(doc) Test description for is_intercepted.
++  `is_intercepted`
++  #(doc) Test description for is_good.
++  `is_good`
++  #(doc) Test description for detail.
++  `detail`
++  *
++} extend {
++  #(doc) Test description for games.
+   join_one: games with game_id
+@@ -33,1 +73,2 @@
++  #(doc) Test description for teams.
+   join_one: teams with team
+@@ -34,1 +75,2 @@
++  #(doc) Test description for roster.
+   join_one: roster with player_id
+@@ -182,1 +224,9 @@
++  #(doc) Test description for season.
++  #(doc) Test description for game_week.
++  #(doc) Test description for game_id.
++  #(doc) Test description for player_id.
++  #(doc) Test description for full_name.
++  #(doc) Test description for position.
++  #(doc) Test description for team.
++  #(doc) Test description for name_key.
+   group_by: season, game_week, game_id, player_id, full_name, position, team, roster.name_key
+@@ -184,1 +234,2 @@
++    #(doc) Test description for fantasy_points.
+     fantasy_points
+@@ -185,1 +236,2 @@
++    #(doc) Test description for passing_total.
+     passing_total
+@@ -186,1 +238,2 @@
++    #(doc) Test description for rushing_total.
+     rushing_total
+@@ -187,1 +240,2 @@
++    #(doc) Test description for receiving_total.
+     receiving_total
+@@ -188,1 +242,2 @@
++    #(doc) Test description for kicking_total.
+     kicking_total
+@@ -189,1 +244,2 @@
++    #(doc) Test description for receptions.
+     receptions
+@@ -190,1 +246,2 @@
++    #(doc) Test description for touchdowns.
+     touchdowns
+@@ -191,1 +248,2 @@
++    #(doc) Test description for passing_yards.
+     passing_yards
+@@ -192,1 +250,2 @@
++    #(doc) Test description for rushing_yards.
+     rushing_yards
+@@ -193,1 +252,2 @@
++    #(doc) Test description for receiving_yards.
+     receiving_yards
+@@ -195,1 +255,2 @@
++  #(doc) Test description for games.
+   join_one: games with game_id
+@@ -196,1 +257,2 @@
++  #(doc) Test description for teams.
+   join_one: teams with team
+@@ -315,1 +377,6 @@
++  #(doc) Test description for season.
++  #(doc) Test description for player_id.
++  #(doc) Test description for full_name.
++  #(doc) Test description for position.
++  #(doc) Test description for name_key.
+   group_by: season, player_id, full_name, position, name_key
+@@ -317,1 +384,2 @@
++    #(doc) Test description for total_points.
+     total_points is fantasy_points.sum()
+@@ -318,1 +386,2 @@
++    #(doc) Test description for games_played.
+     games_played is count()
+@@ -319,1 +388,2 @@
++    #(doc) Test description for passing_points.
+     passing_points is passing_total.sum()
+@@ -320,1 +390,2 @@
++    #(doc) Test description for rushing_points.
+     rushing_points is rushing_total.sum()
+@@ -321,1 +392,2 @@
++    #(doc) Test description for receiving_points.
+     receiving_points is receiving_total.sum()
+@@ -322,1 +394,2 @@
++    #(doc) Test description for kicking_points.
+     kicking_points is kicking_total.sum()
+@@ -323,1 +396,2 @@
++    #(doc) Test description for receptions_total.
+     receptions_total is receptions.sum()
+@@ -324,1 +398,2 @@
++    #(doc) Test description for touchdowns_total.
+     touchdowns_total is touchdowns.sum()
+@@ -325,1 +400,2 @@
++    #(doc) Test description for best_game.
+     best_game is fantasy_points.max()
+@@ -326,1 +402,2 @@
++    #(doc) Test description for boom_games.
+     boom_games is count() { where: fantasy_points >= 20 }
+@@ -327,1 +404,2 @@
++    #(doc) Test description for bust_games.
+     bust_games is count() { where: fantasy_points < 8 }
+@@ -329,1 +407,2 @@
++    #(doc) Test description for team.
+     team is max(team)
+@@ -331,1 +410,2 @@
++    #(doc) Test description for overall_finish.
+     overall_finish is rank() { partition_by: season; order_by: total_points desc }
+@@ -332,1 +412,2 @@
++    #(doc) Test description for position_finish.
+     position_finish is rank() { partition_by: season, position; order_by: total_points desc }
+@@ -335,1 +416,2 @@
++  #(doc) Test description for teams.
+   join_one: teams with team
+@@ -338,1 +420,2 @@
++    #(doc) Test description for season_player_id.
+     season_player_id is concat(season::string, ':', player_id)
+@@ -535,1 +618,2 @@
++  #(doc) Test description for teams.
+   join_one: teams with team
+@@ -538,1 +622,2 @@
++  #(doc) Test description for last_season.
+   join_one: last_season is player_seasons on name_key = last_season.name_key and position = last_season.position and last_season.season = 2025
+@@ -677,2 +762,49 @@
+-source: adp_2025 is duckdb.table('data/adp_2025.parquet') extend {
++source: adp_2025 is duckdb.table('data/adp_2025.parquet') include {
++  #(doc) Test description for adp_id.
++  `adp_id`
++  #(doc) Test description for name.
++  `name`
++  #(doc) Test description for name_key.
++  `name_key`
++  #(doc) Test description for position.
++  `position`
++  #(doc) Test description for team.
++  `team`
++  #(doc) Test description for draft_season.
++  `draft_season`
++  #(doc) Test description for scoring.
++  `scoring`
++  #(doc) Test description for league_size.
++  `league_size`
++  #(doc) Test description for source.
++  `source`
++  #(doc) Test description for source_tier.
++  `source_tier`
++  #(doc) Test description for source_format.
++  `source_format`
++  #(doc) Test description for sample_start.
++  `sample_start`
++  #(doc) Test description for sample_end.
++  `sample_end`
++  #(doc) Test description for total_drafts.
++  `total_drafts`
++  #(doc) Test description for adp.
++  `adp`
++  #(doc) Test description for adp_formatted.
++  `adp_formatted`
++  #(doc) Test description for overall_rank.
++  `overall_rank`
++  #(doc) Test description for position_rank.
++  `position_rank`
++  #(doc) Test description for times_drafted.
++  `times_drafted`
++  #(doc) Test description for high_pick.
++  `high_pick`
++  #(doc) Test description for low_pick.
++  `low_pick`
++  #(doc) Test description for adp_stdev.
++  `adp_stdev`
++  *
++} extend {
++  #(doc) Test description for finish.
+   join_one: finish is player_seasons on name_key = finish.name_key and position = finish.position and finish.season = 2025
+--- a/dashboards/draft_market.malloy
++++ b/dashboards/draft_market.malloy
+@@ -31,1 +31,2 @@
++  #(doc) Test description for steals.
+   # colspan=6
+@@ -35,1 +36,2 @@
++  #(doc) Test description for reaches.
+   # colspan=6
+@@ -39,1 +41,2 @@
++  #(doc) Test description for curve.
+   # colspan=8
+@@ -44,1 +47,2 @@
++  #(doc) Test description for capital.
+   # colspan=4
+@@ -51,1 +55,2 @@
++  #(doc) Test description for hit_rates.
+   # colspan=12
+@@ -56,1 +61,2 @@
++  #(doc) Test description for hits.
+   # colspan=6
+@@ -61,1 +67,2 @@
++  #(doc) Test description for misses.
+   # colspan=6
+--- a/football.malloy
++++ b/football.malloy
+@@ -21,1 +21,2 @@
++##! experimental.access_modifiers
+ ## theme.palette.series = ["#1f2933", "#2fa58d", "#ea8e3c", "#438fc3", "#a75dc1", "#8b97a6"]
+@@ -24,2 +25,18 @@
+-source: teams is duckdb.table('data/teams.parquet') extend {
++source: teams is duckdb.table('data/teams.parquet') include {
++  #(doc) Test description for team.
++  `team`
++  #(doc) Test description for location.
++  `location`
++  #(doc) Test description for name.
++  `name`
++  #(doc) Test description for conference.
++  `conference`
++  #(doc) Test description for division.
++  `division`
++  #(doc) Test description for primary_color.
++  `primary_color`
++  #(doc) Test description for secondary_color.
++  `secondary_color`
++  *
++} extend {
+   primary_key: team
+@@ -48,2 +65,14 @@
+-source: roster is duckdb.table('data/roster.parquet') extend {
++source: roster is duckdb.table('data/roster.parquet') include {
++  #(doc) Test description for player_id.
++  `player_id`
++  #(doc) Test description for full_name.
++  `full_name`
++  #(doc) Test description for position.
++  `position`
++  #(doc) Test description for team.
++  `team`
++  #(doc) Test description for name_key.
++  `name_key`
++  *
++} extend {
+   primary_key: player_id
+@@ -50,1 +79,2 @@
++  #(doc) Test description for teams.
+   join_one: teams with team
+@@ -59,2 +89,38 @@
+-source: games is duckdb.table('data/games.parquet') extend {
++source: games is duckdb.table('data/games.parquet') include {
++  #(doc) Test description for game_id.
++  `game_id`
++  #(doc) Test description for season.
++  `season`
++  #(doc) Test description for game_week.
++  `game_week`
++  #(doc) Test description for game_type.
++  `game_type`
++  #(doc) Test description for game_date.
++  `game_date`
++  #(doc) Test description for weekday.
++  `weekday`
++  #(doc) Test description for gametime.
++  `gametime`
++  #(doc) Test description for away_team.
++  `away_team`
++  #(doc) Test description for home_team.
++  `home_team`
++  #(doc) Test description for away_score.
++  `away_score`
++  #(doc) Test description for home_score.
++  `home_score`
++  #(doc) Test description for result.
++  `result`
++  #(doc) Test description for total.
++  `total`
++  #(doc) Test description for is_overtime.
++  `is_overtime`
++  #(doc) Test description for stadium.
++  `stadium`
++  #(doc) Test description for roof.
++  `roof`
++  #(doc) Test description for surface.
++  `surface`
++  *
++} extend {
+   primary_key: game_id
+@@ -61,1 +127,2 @@
++  #(doc) Test description for home.
+   join_one: home is teams on home_team = home.team
+@@ -62,1 +129,2 @@
++  #(doc) Test description for away.
+   join_one: away is teams on away_team = away.team
+@@ -153,1 +221,2 @@
++  #(doc) Test description for teams.
+   join_one: teams with team
+@@ -154,1 +223,2 @@
++  #(doc) Test description for opponent_team.
+   join_one: opponent_team is teams on opponent = opponent_team.team
+@@ -215,2 +285,39 @@
+-source: plays is duckdb.table('data/plays.parquet') extend {
++source: plays is duckdb.table('data/plays.parquet') include {
++  #(doc) Test description for game_id.
++  `game_id`
++  #(doc) Test description for play_seq.
++  `play_seq`
++  #(doc) Test description for season.
++  `season`
++  #(doc) Test description for game_week.
++  `game_week`
++  #(doc) Test description for game_quarter.
++  `game_quarter`
++  #(doc) Test description for clock.
++  `clock`
++  #(doc) Test description for down.
++  `down`
++  #(doc) Test description for to_go.
++  `to_go`
++  #(doc) Test description for yardline_100.
++  `yardline_100`
++  #(doc) Test description for offense.
++  `offense`
++  #(doc) Test description for defense.
++  `defense`
++  #(doc) Test description for play_type.
++  `play_type`
++  #(doc) Test description for yards_gained.
++  `yards_gained`
++  #(doc) Test description for detail.
++  `detail`
++  #(doc) Test description for ep.
++  `ep`
++  #(doc) Test description for epa.
++  `epa`
++  #(doc) Test description for wp.
++  `wp`
++  *
++} extend {
++  #(doc) Test description for games.
+   join_one: games with game_id
+@@ -217,1 +324,2 @@
++  #(doc) Test description for offense_team.
+   join_one: offense_team is teams on offense = offense_team.team
+--- a/dashboards/season_leaders.malloy
++++ b/dashboards/season_leaders.malloy
+@@ -35,1 +35,2 @@
++  #(doc) Test description for board.
+   # colspan=8
+@@ -39,1 +40,2 @@
++  #(doc) Test description for scarcity.
+   # colspan=4
+@@ -44,1 +46,2 @@
++  #(doc) Test description for mix.
+   # colspan=6
+@@ -68,1 +71,2 @@
++  #(doc) Test description for best_games.
+   # colspan=6
+@@ -92,1 +96,2 @@
++  #(doc) Test description for by_quarter.
+   # colspan=12
+--- a/market.malloy
++++ b/market.malloy
+@@ -19,1 +19,2 @@
++##! experimental.access_modifiers
+ import "football.malloy"
+@@ -22,2 +23,20 @@
+-source: futures_2026 is duckdb.table('data/futures_2026.parquet') extend {
++source: futures_2026 is duckdb.table('data/futures_2026.parquet') include {
++  #(doc) Test description for season.
++  `season`
++  #(doc) Test description for team.
++  `team`
++  #(doc) Test description for win_total.
++  `win_total`
++  #(doc) Test description for playoff_prob.
++  `playoff_prob`
++  #(doc) Test description for division_prob.
++  `division_prob`
++  #(doc) Test description for conference_prob.
++  `conference_prob`
++  #(doc) Test description for super_bowl_prob.
++  `super_bowl_prob`
++  #(doc) Test description for futures_book.
++  `futures_book`
++  *
++} extend {
+   primary_key: team
+@@ -24,1 +43,2 @@
++  #(doc) Test description for teams.
+   join_one: teams with team
+@@ -28,2 +48,46 @@
+-source: schedule_2026 is duckdb.table('data/schedule_2026.parquet') extend {
++source: schedule_2026 is duckdb.table('data/schedule_2026.parquet') include {
++  #(doc) Test description for game_id.
++  `game_id`
++  #(doc) Test description for season.
++  `season`
++  #(doc) Test description for game_week.
++  `game_week`
++  #(doc) Test description for weekday.
++  `weekday`
++  #(doc) Test description for game_date.
++  `game_date`
++  #(doc) Test description for kickoff_et.
++  `kickoff_et`
++  #(doc) Test description for away_team.
++  `away_team`
++  #(doc) Test description for home_team.
++  `home_team`
++  #(doc) Test description for location.
++  `location`
++  #(doc) Test description for is_neutral.
++  `is_neutral`
++  #(doc) Test description for roof.
++  `roof`
++  #(doc) Test description for has_lines.
++  `has_lines`
++  #(doc) Test description for home_spread.
++  `home_spread`
++  #(doc) Test description for total_line.
++  `total_line`
++  #(doc) Test description for home_moneyline.
++  `home_moneyline`
++  #(doc) Test description for away_moneyline.
++  `away_moneyline`
++  #(doc) Test description for implied_home_score.
++  `implied_home_score`
++  #(doc) Test description for implied_away_score.
++  `implied_away_score`
++  #(doc) Test description for home_win_prob.
++  `home_win_prob`
++  #(doc) Test description for away_win_prob.
++  `away_win_prob`
++  #(doc) Test description for lines_book.
++  `lines_book`
++  *
++} extend {
+   primary_key: game_id
+@@ -30,1 +94,2 @@
++  #(doc) Test description for home.
+   join_one: home is teams on home_team = home.team
+@@ -31,1 +96,2 @@
++  #(doc) Test description for away.
+   join_one: away is teams on away_team = away.team
+@@ -105,1 +171,2 @@
++  #(doc) Test description for teams.
+   join_one: teams with team
+@@ -106,1 +173,2 @@
++  #(doc) Test description for opponent_team.
+   join_one: opponent_team is teams on opponent = opponent_team.team
+@@ -107,1 +175,2 @@
++  #(doc) Test description for opponent_futures.
+   join_one: opponent_futures is futures_2026 on opponent = opponent_futures.team
+@@ -180,1 +249,2 @@
++  #(doc) Test description for slate.
+   join_many: slate is team_schedule_2026 on team = slate.team
+@@ -181,1 +251,2 @@
++  #(doc) Test description for results_2025.
+   join_many: results_2025 is team_games on team = results_2025.team and results_2025.season = 2025 and results_2025.game_type = 'REG'
+--- a/dashboards/team_outlook.malloy
++++ b/dashboards/team_outlook.malloy
+@@ -31,1 +31,2 @@
++  #(doc) Test description for board.
+   # colspan=12
+@@ -35,1 +36,2 @@
++  #(doc) Test description for favorites.
+   # colspan=6
+@@ -40,1 +42,2 @@
++  #(doc) Test description for schedules.
+   # colspan=6
+@@ -53,1 +56,2 @@
++  #(doc) Test description for lines.
+   # colspan=12

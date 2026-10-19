@@ -184,83 +184,90 @@ export function DashboardView({
             <GivensPanel {...controls.panel} layout="bar" />
          </Box>
 
-         {modelPath === undefined ? (
-            <Alert severity="error">
-               This dashboard has no model path, so there is nothing to run.
-            </Alert>
-         ) : manifest.query !== undefined ? (
-            // Single-query form: one query whose result IS the dashboard. Its
-            // `# dashboard {columns=N}` tag is the renderer's business, so no
-            // grid is imposed here: doing so would nest a grid in a grid.
-            <DashboardTile
-               environmentName={environmentName}
-               packageName={packageName}
-               versionId={versionId}
-               modelPath={modelPath}
-               queryName={manifest.query}
-               givens={applied}
-               declaredTypes={declaredTypes}
-               height={height}
-               maxResultSize={maxResultSize}
-               drill={drill}
-               chrome={chrome}
-            />
-         ) : tiles.length > 0 ? (
-            // Composite form: each tile runs on its own and the results are
-            // combined into one grid here, since no single Malloy result spans
-            // them.
-            <DashboardGrid
-               tiles={tiles}
-               columns={columns}
-               minTilePx={MIN_TILE_PX}
-               // Position too, not the expression alone: `tiles=[…]` can repeat
-               // one, which is a typo rather than a request for two identical
-               // panels, and keying on the expression made the duplicate warn
-               // and reconcile onto its twin.
-               keyOf={(tile, index) =>
-                  `${index}:${tile.kind === "text" ? `text:${tile.name}` : tile.query}`
-               }
-               renderTile={(tile) =>
-                  // An absent `kind` is a query tile, as it was before text tiles.
-                  tile.kind === "text" || tile.query === undefined ? (
-                     <TextTile markdown={tile.markdown ?? ""} chrome={chrome} />
-                  ) : (
-                     <DashboardTile
-                        environmentName={environmentName}
-                        packageName={packageName}
-                        versionId={versionId}
-                        modelPath={modelPath}
-                        tile={tile.query}
-                        label={tile.label}
-                        subtitle={tile.subtitle}
-                        borderless={tile.borderless}
-                        givens={tileGivens}
-                        declaredTypes={declaredTypes}
-                        givenNames={tile.givenNames}
-                        height={height ?? TILE_MAX_HEIGHT}
-                        maxResultSize={maxResultSize}
-                        drill={drillFor(tile.query)}
-                        chrome={chrome}
-                        ignoredFilters={tileIgnoredFilterLabels(
-                           tile.givenNames,
-                           specs,
-                        )}
-                        onExplore={() => {
-                           setExploring(tile.query);
-                           onEvent?.({
-                              type: "dashboard.explored",
-                              tile: tile.query ?? "",
-                           });
-                        }}
-                     />
-                  )
-               }
-            />
-         ) : (
-            <Alert severity="warning">
-               This dashboard names neither a query nor any tiles.
-            </Alert>
-         )}
+         {/* Its own stacking context, so a z-index inside a rendered result
+             (a table's pinned header is 100) cannot paint over the bar. */}
+         <Box sx={{ isolation: "isolate" }}>
+            {modelPath === undefined ? (
+               <Alert severity="error">
+                  This dashboard has no model path, so there is nothing to run.
+               </Alert>
+            ) : manifest.query !== undefined ? (
+               // Single-query form: one query whose result IS the dashboard. Its
+               // `# dashboard {columns=N}` tag is the renderer's business, so no
+               // grid is imposed here: doing so would nest a grid in a grid.
+               <DashboardTile
+                  environmentName={environmentName}
+                  packageName={packageName}
+                  versionId={versionId}
+                  modelPath={modelPath}
+                  queryName={manifest.query}
+                  givens={applied}
+                  declaredTypes={declaredTypes}
+                  height={height}
+                  maxResultSize={maxResultSize}
+                  drill={drill}
+                  chrome={chrome}
+               />
+            ) : tiles.length > 0 ? (
+               // Composite form: each tile runs on its own and the results are
+               // combined into one grid here, since no single Malloy result spans
+               // them.
+               <DashboardGrid
+                  tiles={tiles}
+                  columns={columns}
+                  minTilePx={MIN_TILE_PX}
+                  // Position too, not the expression alone: `tiles=[…]` can repeat
+                  // one, which is a typo rather than a request for two identical
+                  // panels, and keying on the expression made the duplicate warn
+                  // and reconcile onto its twin.
+                  keyOf={(tile, index) =>
+                     `${index}:${tile.kind === "text" ? `text:${tile.name}` : tile.query}`
+                  }
+                  renderTile={(tile) =>
+                     // An absent `kind` is a query tile, as it was before text tiles.
+                     tile.kind === "text" || tile.query === undefined ? (
+                        <TextTile
+                           markdown={tile.markdown ?? ""}
+                           chrome={chrome}
+                        />
+                     ) : (
+                        <DashboardTile
+                           environmentName={environmentName}
+                           packageName={packageName}
+                           versionId={versionId}
+                           modelPath={modelPath}
+                           tile={tile.query}
+                           label={tile.label}
+                           subtitle={tile.subtitle}
+                           borderless={tile.borderless}
+                           givens={tileGivens}
+                           declaredTypes={declaredTypes}
+                           givenNames={tile.givenNames}
+                           height={height ?? TILE_MAX_HEIGHT}
+                           maxResultSize={maxResultSize}
+                           drill={drillFor(tile.query)}
+                           chrome={chrome}
+                           ignoredFilters={tileIgnoredFilterLabels(
+                              tile.givenNames,
+                              specs,
+                           )}
+                           onExplore={() => {
+                              setExploring(tile.query);
+                              onEvent?.({
+                                 type: "dashboard.explored",
+                                 tile: tile.query ?? "",
+                              });
+                           }}
+                        />
+                     )
+                  }
+               />
+            ) : (
+               <Alert severity="warning">
+                  This dashboard names neither a query nor any tiles.
+               </Alert>
+            )}
+         </Box>
 
          {drillMenu}
          {modelPath !== undefined && (
